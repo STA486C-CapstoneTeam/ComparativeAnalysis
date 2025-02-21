@@ -1,0 +1,17 @@
+---
+title: "Data_Cleaning_Capstone"
+author: "Tucker Harris"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Uploading Data
+
+```{r}
+
+
+```
