@@ -7,11 +7,25 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library( caret )
 ```
 
 # Uploading Data
 
 ```{r}
+data <- read.csv("Sample Sales Data(2025-01-15 10_13am (2)).csv")
+```
+
+
+```{r}
+unique(data$PRODUCTION_COMMISSION_TYPE_CATEGORY)
+```
+
+```{r}
+new_data <- data
+new_data[new_data == ''] <- NA
+head(new_data)
 
 
 ```
+
