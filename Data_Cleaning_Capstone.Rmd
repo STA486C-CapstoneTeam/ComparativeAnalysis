@@ -8,6 +8,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library( caret )
+library( dplyr )
 ```
 
 # Uploading Data
@@ -18,14 +19,55 @@ data <- read.csv("Sample Sales Data(2025-01-15 10_13am (2)).csv")
 
 
 ```{r}
-unique(data$PRODUCTION_COMMISSION_TYPE_CATEGORY)
+library(dplyr)
+data %>% 
+  group_by(ACCOUNT) %>%
+  summarise(no_rows = length(ID))```
+
+
+```{r}
+colSums(is.na(data))
 ```
 
 ```{r}
-new_data <- data
-new_data[new_data == ''] <- NA
-head(new_data)
+data_complete <- data[complete.cases(data),]
+data_complete
+```
+
+```{r}
+min(data$PRODUCTION_EFP)
+```
+```{r}
+data.clean <- data
+
+data.clean$PRODUCTION_IS_VALID_INSTALL = ifelse(data.clean$PRODUCTION_IS_VALID_INSTALL == "TRUE", 1,0)
+data.clean$PRODUCTION_IS_SAME_DAY = ifelse(data.clean$PRODUCTION_IS_SAME_DAY == "TRUE", 1,0)
+
+data.clean[data.clean == ""] <- NA
+
+data.clean <- data.clean %>% 
+  mutate( CLOSED_SALE = case_when(PRODUCTION_EFP == NA ~ 0, CLOSED_SALE = PRODUCTION_EFP != NA ~ 1) )
+```
 
 
+```{r}
+REMOVE_COLS <- c(
+  "ZIP_CODE",
+  "OPPORTUNITY_CREATED_DATE",
+  "MANAGEMENT_GROUP_LEADER_ID",
+  "SENIOR_MANAGEMENT_GROUP_LEADER_ID",
+  "REGION_LEADER_ID",
+  "SENIOR_REGION_LEADER_ID",
+  "PARTNERSHIP_LEADER_ID",
+  "PRE_INSTALL_SURVEY_ID",
+  "PRE_INSTALL_SURVEY_CREATED_DATE_TIME",
+  "PRE_INSTALL_LATEST_SURVEY_PASS_DATE",
+  "PRODUCTION_INSTALL_DATE_TIME",
+  "PRODUCTION_IS_DIY",
+  "CANCELLATION_DATE_TIME"
+)
+
+
+data.reduced <- data.clean[ , !names(data.clean) %in% REMOVE_COLS]
 ```
 
