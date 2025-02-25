@@ -37,6 +37,7 @@ data_complete
 ```{r}
 min(data$PRODUCTION_EFP)
 ```
+
 ```{r}
 data.clean <- data
 
@@ -46,7 +47,12 @@ data.clean$PRODUCTION_IS_SAME_DAY = ifelse(data.clean$PRODUCTION_IS_SAME_DAY == 
 data.clean[data.clean == ""] <- NA
 
 data.clean <- data.clean %>% 
-  mutate( CLOSED_SALE = case_when(PRODUCTION_EFP == NA ~ 0, CLOSED_SALE = PRODUCTION_EFP != NA ~ 1) )
+  mutate( 
+    CLOSED_SALE = case_when(
+      is.na(PRODUCTION_EFP) ~ 0,
+      !is.na(PRODUCTION_EFP) ~ 1
+    )
+  )
 ```
 
 
