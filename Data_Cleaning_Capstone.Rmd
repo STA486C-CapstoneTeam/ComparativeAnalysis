@@ -24,6 +24,7 @@ data %>%
   group_by(ACCOUNT) %>%
   summarise(no_rows = length(ID))```
 
+```
 
 ```{r}
 colSums(is.na(data))
@@ -75,5 +76,24 @@ REMOVE_COLS <- c(
 
 
 data.reduced <- data.clean[ , !names(data.clean) %in% REMOVE_COLS]
+```
+
+```{r}
+data.reduced.noupgrade <- data.reduced[data.reduced$OPPORTUNITY_TYPE != "Upgrade", ]
+
+my_table <- table(data.reduced.noupgrade$TENURE, data.reduced.noupgrade$CLOSED_SALE) 
+
+print(my_table) 
+
+
+proportions_table <- prop.table(my_table, margin = 1)  
+
+# "margin = 1" calculates proportions for each row (i.e., for each level of variable1)
+
+
+
+# Print the table
+
+print(proportions_table)
 ```
 
