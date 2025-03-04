@@ -29,7 +29,7 @@ Our preliminary figures reflect the proportion test, and a boxplot both of which
 ```{r, echo=FALSE}
 
 # Pulling Data
-Sales_data <- data.clean
+Sales_data <- read.csv("data_clean_noNA.csv")
 
 
 ```
@@ -51,31 +51,15 @@ ggplot(data=test.df, aes(x=Var1, y=Freq, fill=Var1)) +
 
 ```
 
-```{r, include=FALSE}
-
-# Quartile testing
-
-# table with factors and 3rd quantile
-OWA <- group_by(data.clean, feed) %>%
-  summarise(mean=mean(weight), quant = quantile(weight, probs = 0.75)) %>%
-  arrange(desc(mean))
-
-# extracting the compact letter display and adding to the Tk table
-cld <- as.data.frame.list(cld$feed)
-Tk$cld <- cld$Letters
-
-print(Tk)
-
-```
 
 ```{r}
 
 #Temp Frame
-data.clean_noNA <- data.clean[complete.cases(data.clean),] %>% filter(!any(PRODUCTION_TOTAL_RMR)) %>% group_by(TENURE) 
+data.clean_noNA <- Sales_data[complete.cases(Sales_data),] %>% filter( PRODUCTION_TOTAL_RMR > 0)  
 
 
 #boxplot
-ggplot(data.clean_noNA, aes(data.clean_noNA$TENURE, data.clean_noNA$PRODUCTION_TOTAL_RMR)) +
+ggplot(data.clean_noNA, aes(x = TENURE, y = PRODUCTION_TOTAL_RMR)) +
   geom_boxplot()
 
 ```
