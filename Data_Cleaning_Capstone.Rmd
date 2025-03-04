@@ -99,7 +99,12 @@ print(proportions_table)
 
 ```{r}
 test.df <- as.data.frame( proportions_table )
+test.df <- test.df[4:6,]
 
-ggplot(data=test.df, aes(x=Var1, y=Freq))
+ggplot(data=test.df, aes(x=Var1, y=Freq, fill=Var1)) +
+  geom_bar(stat = "identity") +
+  labs(title="Proportion of Successful Sales vs. Sales Tenure",
+       x="Sales Tenure", y="Proportion of Successful Sales") +
+  theme(legend.position="none")
 ```
 
