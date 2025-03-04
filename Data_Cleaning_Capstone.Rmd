@@ -97,3 +97,9 @@ proportions_table <- prop.table(my_table, margin = 1)
 print(proportions_table)
 ```
 
+```{r}
+test.df <- as.data.frame( proportions_table )
+
+ggplot(data=test.df, aes(x=Var1, y=Freq))
+```
+
