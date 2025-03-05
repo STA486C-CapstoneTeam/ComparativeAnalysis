@@ -7,21 +7,31 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(caret)
 ```
 
 
 ## Abstract
 This project focuses on analyzing the relationship between sales tenure and sales success rates within Vivint Smart Home. The data has been collected from company sales records, categorizing sales representatives into three tenure levels: Rookie, Sophomore, and Veteran. The primary goal is to determine whether tenure level correlates with sales success and, if so, to develop a predictive model that can estimate a representative’s likelihood of success. We aim to provide actionable insights that could guide training programs and hiring decisions, ultimately optimizing sales performance.
+
+
 ## Introduction
 Understanding the link between sales experience and success is crucial for improving hiring and training strategies. This study will utilize historical sales data to analyze patterns and predict outcomes. We are interested in this data because it can help the company enhance its salesforce effectiveness and retention strategies.
+
+
 ## Methods
 The data we collected came straight from the company itself. While merely sample data, the amount provided should be more than enough to conduct insightful predictive analysis. Once this analysis is complete we will have the ability to analyze the biggest difference between tenure and how to better train lesser developed salesmen. This study will primarily focus on comparative analysis primarily between tenure, but there are plenty of other variables that will be explored. The first test we conducted was a simple proportion test on percentage of closed sales after a customer’s credit has been run. Down the line of testing we will create a plethora of other models consisting of Logistic Regression, Large Language Models, and anova testing. 
+
+
 ## Expected Outcomes
 If everything goes well with our modeling, we expect to find the biggest differences between tenures to create a better idea of where lower tenure salesmen should be better trained. Ideally to close the gap between newer salesmen and their more experienced counterparts.
 
 
 ## Group Contributions
 An approximation of work distribution:  data collection (TH - 100%), data wrangling (TH - 10%, RM 90%), data modeling (RM - 75%, TH 25%), figure and table creation (TH - 50%, RM 50%), and final poster presentation (TH 50% RM 50%).  
+
+
 ## Preliminary Modeling
 Our preliminary figures reflect the proportion test, and a boxplot both of which can be seen below, as well as a simple data frame highlighting the available variables we intend to cross analyze. You could also consider a table of variables describing what you have collected and what the variables represent.
 
@@ -29,11 +39,11 @@ Our preliminary figures reflect the proportion test, and a boxplot both of which
 ```{r, echo=FALSE}
 
 # Pulling Data
-Sales_data <- read.csv("data_clean_noNA.csv")
+data.clean_noNA <- read.csv("data_clean_noNA.csv")
 
 
 ```
-
+\newpage
 
 ```{r, echo=FALSE}
 data.reduced <- read.csv("data_clean_withNA.csv")
@@ -41,7 +51,7 @@ data.reduced.noupgrade <- data.reduced[data.reduced$OPPORTUNITY_TYPE != "Upgrade
 
 my_table <- table(data.reduced.noupgrade$TENURE, data.reduced.noupgrade$CLOSED_SALE) 
 
-print(my_table) 
+#print(my_table) 
 
 
 proportions_table <- prop.table(my_table, margin = 1)  
@@ -52,7 +62,7 @@ proportions_table <- prop.table(my_table, margin = 1)
 
 # Print the table
 
-print(proportions_table)
+#print(proportions_table)
 # Percentile Testing
 test.df <- as.data.frame( proportions_table )
 test.df <- test.df[4:6,]
@@ -67,29 +77,50 @@ ggplot(data=test.df, aes(x=Var1, y=Freq, fill=Var1)) +
 
 ```
 
+This table appears to have a basic visual correlated trend between sales closure success. In direct order of experience, from Veteran, Sophomore, and finally rookie. The proportion testing resulted with the following basic analysis: 
 
 
-```{r}
+
+
+\newpage
+
+
+
+```{r, echo = FALSE}
 
 #Temp Frame
-data.clean_noNA <- Sales_data[complete.cases(Sales_data),] %>% filter( PRODUCTION_TOTAL_RMR > 0)  
+#data.clean_noNA <- Sales_data[complete.cases(Sales_data),] %>% filter( PRODUCTION_TOTAL_RMR > 0)  
 
 
 #boxplot
-ggplot(data.clean_noNA, aes(x = TENURE, y = PRODUCTION_TOTAL_RMR)) +
-  geom_boxplot()
+#ggplot(data.clean_noNA, aes(x = TENURE, y = PRODUCTION_TOTAL_RMR)) +
+  #geom_boxplot()
 
 ```
 
-```{r, include=FALSE}
+```{r, echo = FALSE}
 
-
+ggplot(data.clean_noNA, aes( x = PRODUCTION_TOTAL_RMR, fill = TENURE)) +  geom_histogram() +
+  labs(title="Value of Sales by Tenure",
+       x="Production RMR", y="Number of Sales") +
+  theme(legend.position="none") +
+  facet_grid(TENURE~.) 
+ 
 
 ```
 
-```{r, include=FALSE}
+This histogram shows that while Tenure may be significant when it comes to percentage of closed attempted sales, the average Production RMR of each sale is very similar. While further analysis is needed, this metric appears to be mostly insignificant. This portion of training rookies seems like it is already going well, as the difference in mean RMR by Tenure is very small. 
 
 
+
+
+```{r, include = FALSE}
+
+#avg <-data.clean_noNA %>%
+  #group_by(TENURE) %>%
+  #summarise(mean = mean(PRODUCTION_TOTAL_RMR), n = n())
+
+#avg
 
 ```
 
