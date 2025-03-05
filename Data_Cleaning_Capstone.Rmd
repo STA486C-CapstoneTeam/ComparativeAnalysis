@@ -81,7 +81,10 @@ REMOVE_COLS <- c(
 
 data.reduced <- data.clean[ , !names(data.clean) %in% REMOVE_COLS]
 
-write.csv(data.reduced, "data_clean_withNA.csv")
+#write.csv(data.reduced, "data_clean_withNA.csv")
+
+data.reduced <- subset(data.reduced, !rowSums(data.reduced < 0))
+
 
 ```
 
