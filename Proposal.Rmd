@@ -36,7 +36,23 @@ Sales_data <- read.csv("data_clean_noNA.csv")
 
 
 ```{r, echo=FALSE}
+data.reduced <- read.csv("data_clean_withNA.csv")
+data.reduced.noupgrade <- data.reduced[data.reduced$OPPORTUNITY_TYPE != "Upgrade", ]
 
+my_table <- table(data.reduced.noupgrade$TENURE, data.reduced.noupgrade$CLOSED_SALE) 
+
+print(my_table) 
+
+
+proportions_table <- prop.table(my_table, margin = 1)  
+
+# "margin = 1" calculates proportions for each row (i.e., for each level of variable1)
+
+
+
+# Print the table
+
+print(proportions_table)
 # Percentile Testing
 test.df <- as.data.frame( proportions_table )
 test.df <- test.df[4:6,]
