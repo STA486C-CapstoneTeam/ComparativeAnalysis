@@ -1,0 +1,44 @@
+---
+title: "proptest"
+author: "Richard McCormick"
+date: '2025-03-05'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(plyr)
+```
+
+```{r cars}
+data <- read.csv("data_clean_withNA.csv")
+```
+
+```{r}
+vet_data <- data[data$TENURE == "Veteran", ]
+sop_data <- data[data$TENURE == "Sophomore",]
+rookie_data <- data[data$TENURE == "Rookie", ]
+```
+
+```{r}
+ddply(data, .(TENURE), summarise, X2=sum(CLOSED_SALE))
+
+```
+
+```{r}
+# Rookie / Sophomore
+prop.test(c(44603, 28116), c(164528,82599), p = NULL, alternative = "two.sided", correct = TRUE)
+
+```
+
+```{r}
+# Sophomore / Veteran
+prop.test(c(28116, 50820), c(82599,118611), p = NULL, alternative = "two.sided", correct = TRUE)
+```
+
+```{r}
+# Rookie / Veteran
+prop.test(c(44603, 50820), c(164528,118611), p = NULL, alternative = "two.sided", correct = TRUE)
+```
+
