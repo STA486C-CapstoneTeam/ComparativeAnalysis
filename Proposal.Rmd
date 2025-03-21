@@ -11,7 +11,8 @@ library(dplyr)
 library(caret)
 library( data.table )
 library(knitr)
-library(gt)
+library(glmnet)
+library(tidyverse)
 ```
 
 
@@ -147,9 +148,84 @@ This histogram shows that while Tenure may be significant when it comes to perce
 ```
 
 
+# Training and testing Data Sets
+
+```{r}
+
+# Set seed to get same result every time
+set.seed(123)
+
+#Use 70% of dataset as training set and remaining 30% as testing set
+sample <- sample(c(TRUE, FALSE), nrow(data.clean_noNA), replace=TRUE, prob=c(0.8,0.2))
+train1  <- data.clean_noNA[sample, ]
+test1   <- data.clean_noNA[!sample, ]
+
+#view dimensions of training set
+dim(train1)
+
+#view dimensions of test set
+dim(test1)
+
+
+
+```
+
+# Elastic Net
+```{r}
+
+resp_var <- "CLOSED_SALE"
+
+# Excluding unwanted columns
+unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "EMPLOYEE_ID", "PARENT_OFFICE_ID", "TEAM_LEADER_ID", "PRODUCTION_SERVICE_NUMBER", "PRODUCTION_IS_FUNDED", "PRODUCTION_INSTALL_FEES_COLLECTED", "OPPORTUNITY_TYPE" )  
+
+# Create predictor matrix with dummy variables for categorical data
+X_train <- model.matrix(~ . - 1, data = train1 %>% select(-all_of(unwanted_cols), -all_of(resp_var)))
+
+
+y_train <- train1[[resp_var]]
+
+X_test <- model.matrix(~ . - 1, data = test1 %>% select(-all_of(unwanted_cols), -all_of(resp_var)))
+
+
+y_test <- test1[[resp_var]]
+
+y_train <- as.numeric(as.factor(train1[[resp_var]])) - 1
+y_test <- as.numeric(as.factor(test1[[resp_var]])) - 1
+
+ 
+
+```
+
+```{r}
 
 
 
 
+# E-Net Logistic Regression
+
+cv_fit <- cv.glmnet(X_train, y_train, alpha = 0.5, family = "binomial")
+
+# Get the best lambda value
+best_lambda <- cv_fit$lambda.min
+
+# Fit the final logistic regression model
+final_model <- glmnet(X_train, y_train, alpha = 0.5, lambda = best_lambda, family = "binomial")
+
+# Make probability predictions on test set
+y_pred_prob <- predict(final_model, X_test, type = "response")
+
+# Convert probabilities to binary predictions (threshold = 0.5)
+y_pred_class <- ifelse(y_pred_prob > 0.5, 1, 0)
+
+# Make a confusion Matrix
+conf_matrix <- table(Predicted = y_pred_class, Actual = y_test)
+print(conf_matrix)
+
+# Compute Accuracy
+accuracy <- sum(diag(conf_matrix)) / sum(conf_matrix)
+print(paste("Accuracy:", round(accuracy, 4)))
+
+
+```
 
 
