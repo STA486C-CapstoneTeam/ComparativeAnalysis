@@ -1,0 +1,81 @@
+---
+title: "GLM Analysis"
+author: "Richard McCormick"
+date: "2025-03-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library( dplyr )
+library( caret )
+library( data.table )
+library( knitr )
+library( glmnet )
+library( tidyverse )
+```
+
+# Data Ingest
+
+```{r}
+# Ingest data from CSV file
+data.clean_noNA <- read.csv( "data_clean_noNA.csv" )
+
+# Add additional columns to remove
+unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "EMPLOYEE_ID", "PARENT_OFFICE_ID", "TEAM_LEADER_ID", "PRODUCTION_SERVICE_NUMBER", "PRODUCTION_IS_FUNDED", "PRODUCTION_INSTALL_FEES_COLLECTED", "CLOSED_SALE", "PRODUCTION_EFP" )  
+
+# Remove unwanted columns from CSV data
+data.clean_noNA <- data.clean_noNA[ , !names(data.clean_noNA) %in% unwanted_cols]
+
+```
+
+
+# Split into test/train
+```{r}
+
+# Set random seed for replication
+set.seed(123)
+
+# Define sample / split
+sample <- sample(
+  c( TRUE, FALSE ),         # Define labels
+  nrow( data.clean_noNA ),  # Size of data
+  replace = TRUE,           # Sample replacement
+  prob    = c( 0.8, 0.2 ) ) 
+
+
+train  <- data.clean_noNA[sample, ]
+test   <- data.clean_noNA[!sample, ]
+```
+
+
+# Simple linear stepwise (both directions)
+
+```{r}
+
+# Create simple LM from data
+f.model <- lm( PRODUCTION_TOTAL_RMR ~ . , data = train )
+
+# Turn off warnings...
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  f.model <- step( f.model, 
+                   direction = "both", # Bidirection
+                   trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( f.model )
+
+```
+
+# LM Accuracy Assessment
+
+```{r}
+
+```
+
+
+

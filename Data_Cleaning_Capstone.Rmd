@@ -11,7 +11,7 @@ library( caret )
 library( dplyr )
 ```
 
-# Uploading Data
+# Ingest Data
 
 ```{r}
 data <- read.csv("Sample Sales Data(2025-01-15 10_13am (2)).csv")
@@ -19,24 +19,27 @@ data <- read.csv("Sample Sales Data(2025-01-15 10_13am (2)).csv")
 
 
 ```{r}
-library(dplyr)
-data %>% 
-  group_by(ACCOUNT) %>%
-  summarise(no_rows = length(ID))```
+# =============================  ANALYSIS  =====================================
+
+# -- Looking at number of records by account (how many sales per customer)
+# data %>% 
+#   group_by(ACCOUNT) %>%
+#   summarise(no_rows = length(ID))```
+
+# -- Missing data by column
+# colSums(is.na(data))
+
+# -- Get only complete cases
+# data_complete <- data[complete.cases(data),]
+# data_complete
+
+# -- Get minimum sale amount
+# min(data$PRODUCTION_EFP)
 
 ```
 
 ```{r}
-colSums(is.na(data))
-```
-
-```{r}
-data_complete <- data[complete.cases(data),]
-data_complete
-```
-
-```{r}
-min(data$PRODUCTION_EFP)
+colSums(is.na(data.clean))
 ```
 
 ```{r}
@@ -56,10 +59,6 @@ data.clean <- data.clean %>%
   )
 ```
 
-```{r}
-data.clean <- data.clean[complete.cases(data.clean),]
-write.csv(data.clean, "data_clean.csv")
-```
 
 ```{r}
 REMOVE_COLS <- c(
@@ -75,7 +74,17 @@ REMOVE_COLS <- c(
   "PRE_INSTALL_LATEST_SURVEY_PASS_DATE",
   "PRODUCTION_INSTALL_DATE_TIME",
   "PRODUCTION_IS_DIY",
-  "CANCELLATION_DATE_TIME"
+  "CANCELLATION_DATE_TIME",
+  "ACCOUNT_NAME", 
+  "OPPORTUNITY_ID", 
+  "STATE", 
+  "EMPLOYEE_ID", 
+  "PARENT_OFFICE_ID", 
+  "TEAM_LEADER_ID", 
+  "PRODUCTION_SERVICE_NUMBER", 
+  # "PRODUCTION_IS_FUNDED", 
+  "PRODUCTION_INSTALL_FEES_COLLECTED" 
+  # "OPPORTUNITY_TYPE"
 )
 
 
@@ -83,7 +92,7 @@ data.reduced <- data.clean[ , !names(data.clean) %in% REMOVE_COLS]
 
 #write.csv(data.reduced, "data_clean_withNA.csv")
 
-data.reduced <- subset(data.reduced, !rowSums(data.reduced < 0))
+#data.reduced <- subset(data.reduced, !rowSums(data.reduced < 0))
 
 
 ```
