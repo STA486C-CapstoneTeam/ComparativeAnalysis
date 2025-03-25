@@ -13,6 +13,7 @@ library( data.table )
 library( knitr )
 library( glmnet )
 library( tidyverse )
+library( mgcv )
 ```
 
 # Data Ingest
@@ -33,19 +34,22 @@ data.clean_noNA <- data.clean_noNA[ , !names(data.clean_noNA) %in% unwanted_cols
 # Split into test/train
 ```{r}
 
+# Turn chr vars into factor form
+data.clean_noNA[, c("OPPORTUNITY_TYPE", "FINANCE_TYPE", 
+                     "TENURE", "PRODUCTION_COMMISSION_TYPE_CATEGORY")] <- 
+  lapply(data.clean_noNA[, c("OPPORTUNITY_TYPE", "FINANCE_TYPE", 
+                             "TENURE", "PRODUCTION_COMMISSION_TYPE_CATEGORY")], as.factor)
+
 # Set random seed for replication
 set.seed(123)
 
 # Define sample / split
-sample <- sample(
-  c( TRUE, FALSE ),         # Define labels
-  nrow( data.clean_noNA ),  # Size of data
-  replace = TRUE,           # Sample replacement
-  prob    = c( 0.8, 0.2 ) ) 
+# Generate indices for the training set (80% of the data)
+train_index <- sample(seq_len(nrow(data.clean_noNA)), size = 0.8 * nrow(data.clean_noNA), replace = FALSE)
 
-
-train  <- data.clean_noNA[sample, ]
-test   <- data.clean_noNA[!sample, ]
+# Subset the data into training and test sets
+train <- data.clean_noNA[train_index, ]
+test  <- data.clean_noNA[-train_index, ]
 ```
 
 
@@ -70,6 +74,21 @@ suppressWarnings(
 summary( f.model )
 
 ```
+
+
+#. GAM
+
+```{r}
+
+mod_gam1 = gam(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + PRODUCTION_IS_UPGRADE + KIT_PREMIUM_PACKAGE + PRODUCTION_IS_VALID_INSTALL + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY, data = train)
+summary(mod_gam1)
+
+```
+
+
+
+
+
 
 # LM Accuracy Assessment
 
