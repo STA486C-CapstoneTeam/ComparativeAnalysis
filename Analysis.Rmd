@@ -14,6 +14,8 @@ library( knitr )
 library( glmnet )
 library( tidyverse )
 library( mgcv )
+library(randomForest)
+
 ```
 
 # Data Ingest
@@ -23,7 +25,7 @@ library( mgcv )
 data.clean_noNA <- read.csv( "data_clean_noNA.csv" )
 
 # Add additional columns to remove
-unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "EMPLOYEE_ID", "PARENT_OFFICE_ID", "TEAM_LEADER_ID", "PRODUCTION_SERVICE_NUMBER", "PRODUCTION_IS_FUNDED", "PRODUCTION_INSTALL_FEES_COLLECTED", "CLOSED_SALE", "PRODUCTION_EFP" )  
+unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "EMPLOYEE_ID", "PARENT_OFFICE_ID", "TEAM_LEADER_ID", "PRODUCTION_SERVICE_NUMBER", "PRODUCTION_INSTALL_FEES_COLLECTED", "CLOSED_SALE", "PRODUCTION_EFP" )  
 
 # Remove unwanted columns from CSV data
 data.clean_noNA <- data.clean_noNA[ , !names(data.clean_noNA) %in% unwanted_cols]
@@ -86,15 +88,30 @@ summary(mod_gam1)
 ```
 
 
-
-
-
-
-# LM Accuracy Assessment
+# Random Forest
 
 ```{r}
 
-```
 
+rf<- randomForest(PRODUCTION_TOTAL_RMR~., data=train, importance = TRUE)
+
+print(rf)
+
+```
+# rf importance
+
+```{r}
+
+rf_importance <- rf$importance
+
+importance_plot <- ggplot(data = as.data.frame(rf_importance),
+                          aes(x = reorder(rownames(rf_importance), 
+                                          IncNodePurity),  y = IncNodePurity)) + 
+  geom_bar(stat = "identity") + coord_flip() +
+  labs(title = "Figure 1: Feature Importance", x = "Feature", y = "Mean Decrease in Gini")
+
+print(importance_plot)
+
+```
 
 
