@@ -98,6 +98,31 @@ rf<- randomForest(PRODUCTION_TOTAL_RMR~., data=train, importance = TRUE)
 print(rf)
 
 ```
+```{r}
+
+
+
+
+```
+
+
+
+
+
+# Cross Validation
+```{r}
+
+# Remove RMR column
+features <- data.clean_noNA[,-12]
+
+labels <- data.clean_noNA$PRODUCTION_TOTAL_RMR
+
+folds <- 5
+
+rfcv(features,labels,folds)
+
+
+```
 # rf importance
 
 ```{r}
@@ -115,3 +140,38 @@ print(importance_plot)
 ```
 
 
+```{r}
+
+Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = FINANCE_TYPE, y = TENURE)) +  
+  geom_bar(stat = "identity") +   
+  labs(title = "Tenure vs Financing") +
+  facet_wrap(~TENURE)
+
+Tenure.Finance  # Display the plot
+
+
+```
+
+```{r}
+
+
+ggplot(data = data.clean_noNA, aes(fill=TENURE, y=FINANCE_TYPE, x=specie)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    ggtitle("Studying 4 species..") +
+    theme_ipsum() +
+    xlab("")
+
+```
+
+
+
+# Interaction Terms
+
+
+```{r}
+
+
+
+
+```
