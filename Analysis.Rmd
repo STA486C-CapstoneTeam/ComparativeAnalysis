@@ -239,12 +239,12 @@ SUA <- SU / sum(data.clean_noNA$TENURE == "Sophomore")
 ```
 
 # Pie Chart ( Looks less good than the Donut below )
-
+```{r}
 Rookie_pie_data <- data.frame(
   Category = c("New Sales", "Renewals", "Upgrades"),
   Proportion = c(RNSA, RRA, RUA)
 )
-
+```
 
 
 ggplot(Rookie_pie_data, aes(x = "", y = Proportion, fill = Category)) + 
@@ -265,7 +265,7 @@ ggplot(Rookie_pie_data, aes(x = 2, y = Proportion, fill = Category)) +
   geom_bar(stat = "identity", width = 1) + 
   coord_polar(theta = "y") + 
   geom_text(aes(label = scales::percent(Proportion, accuracy = 1)),
-            position = position_stack(vjust = 0.5), size = 5) +
+            position = position_stack(vjust = 0.5), size = 3) +
   labs(title = "Rookie Opportunity Type Proportion") + 
   theme_void() + 
   xlim(0.5, 2.5)
