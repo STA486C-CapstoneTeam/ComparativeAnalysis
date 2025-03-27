@@ -193,3 +193,126 @@ ggplot(data = data.clean_noNA, aes(fill=TENURE, y=FINANCE_TYPE, x=specie)) +
 
 
 ```
+
+
+# Donut Chart
+```{r}
+
+# Count Rookie Opp Types
+
+RNS <- sum(data.clean_noNA$TENURE == "Rookie" & data.clean_noNA$OPPORTUNITY_TYPE == "New Sale")
+RR <- sum(data.clean_noNA$TENURE == "Rookie" & data.clean_noNA$OPPORTUNITY_TYPE == "Renewal")
+RU <- sum(data.clean_noNA$TENURE == "Rookie" & data.clean_noNA$OPPORTUNITY_TYPE == "Upgrade")
+
+
+
+# Count Soph Opp Types
+
+SNS <- sum(data.clean_noNA$TENURE == "Sophomore" & data.clean_noNA$OPPORTUNITY_TYPE == "New Sale")
+SR <- sum(data.clean_noNA$TENURE == "Sophomore" & data.clean_noNA$OPPORTUNITY_TYPE == "Renewal")
+SU <- sum(data.clean_noNA$TENURE == "Sophomore" & data.clean_noNA$OPPORTUNITY_TYPE == "Upgrade")
+# Count Vet Opp Types
+VNS <- sum(data.clean_noNA$TENURE == "Veteran" & data.clean_noNA$OPPORTUNITY_TYPE == "New Sale")
+VR <- sum(data.clean_noNA$TENURE == "Veteran" & data.clean_noNA$OPPORTUNITY_TYPE == "Renewal")
+VU <- sum(data.clean_noNA$TENURE == "Veteran" & data.clean_noNA$OPPORTUNITY_TYPE == "Upgrade")
+
+
+
+# Averages
+
+# Rookie Averages
+RNSA <- RNS / sum(data.clean_noNA$TENURE == "Rookie")
+RRA <- RR / sum(data.clean_noNA$TENURE == "Rookie")
+RUA <- RU / sum(data.clean_noNA$TENURE == "Rookie")
+
+
+# Vet averages
+VNSA <- VNS / sum(data.clean_noNA$TENURE == "Veteran")
+VRA <- VR / sum(data.clean_noNA$TENURE == "Veteran")
+VUA <- VU / sum(data.clean_noNA$TENURE == "Veteran")
+
+# Sophomore Averages
+SNSA <- SNS / sum(data.clean_noNA$TENURE == "Sophomore")
+SRA <- SR / sum(data.clean_noNA$TENURE == "Sophomore")
+SUA <- SU / sum(data.clean_noNA$TENURE == "Sophomore")
+
+
+
+
+```
+
+# Pie Chart ( Looks less good than the Donut below )
+
+Rookie_pie_data <- data.frame(
+  Category = c("New Sales", "Renewals", "Upgrades"),
+  Proportion = c(RNSA, RRA, RUA)
+)
+
+
+
+ggplot(Rookie_pie_data, aes(x = "", y = Proportion, fill = Category)) + 
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") + 
+  geom_text(aes(label = scales::percent(Proportion, accuracy = 1)),
+            position = position_stack(vjust = 0.5), size = 5) +
+  labs(title = "Rookie Sales by Proportion") + 
+  theme_void()
+
+
+
+# Donut Chart
+
+```{r}
+
+ggplot(Rookie_pie_data, aes(x = 2, y = Proportion, fill = Category)) + 
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") + 
+  geom_text(aes(label = scales::percent(Proportion, accuracy = 1)),
+            position = position_stack(vjust = 0.5), size = 5) +
+  labs(title = "Rookie Opportunity Type Proportion") + 
+  theme_void() + 
+  xlim(0.5, 2.5)
+
+```
+
+# Vet Proportion Donut
+
+```{r}
+Vet_pie_data <- data.frame(
+  Category = c("New Sales", "Renewals", "Upgrades"),
+  Proportion = c(VNSA, VRA, VUA)
+)
+
+ggplot(Vet_pie_data, aes(x = 2, y = Proportion, fill = Category)) + 
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") + 
+  geom_text(aes(label = scales::percent(Proportion, accuracy = 1)),
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(title = "Veteran Opportunity Type Proportion") + 
+  theme_void() + 
+  xlim(0.5, 2.5)
+
+
+
+```
+
+
+# Sophomore Proportion Donut
+
+```{r}
+Soph_pie_data <- data.frame(
+  Category = c("New Sales", "Renewals", "Upgrades"),
+  Proportion = c(SNSA, SRA, SUA)
+)
+
+ggplot(Soph_pie_data, aes(x = 2, y = Proportion, fill = Category)) + 
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") + 
+  geom_text(aes(label = scales::percent(Proportion, accuracy = 1)),
+            position = position_stack(vjust = 0.5), size = 3) +
+  labs(title = "Veteran Opportunity Type Proportion") + 
+  theme_void() + 
+  xlim(0.5, 2.5)
+
+
+```
