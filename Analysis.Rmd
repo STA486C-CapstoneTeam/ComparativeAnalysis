@@ -78,6 +78,24 @@ summary( f.model )
 ```
 
 
+```{r}
+int.model <- lm( PRODUCTION_TOTAL_RMR ~ . + TENURE*. , data = train )
+
+# Turn off warnings...
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  int.model <- step( int.model, 
+                     direction = "both", # Bidirection
+                     trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( int.model )
+```
+
+
 #. GAM
 
 ```{r}
