@@ -1,0 +1,210 @@
+---
+title: "GLM Analysis"
+author: "Richard McCormick"
+date: "2025-03-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library( dplyr )
+library( caret )
+library( data.table )
+library( knitr )
+library( glmnet )
+library( tidyverse )
+library( mgcv )
+library(randomForest)
+
+```
+
+# Data Ingest
+
+```{r}
+# Ingest data from CSV file
+data.clean_noNA <- read.csv( "data_clean_noNA.csv" )
+
+# Add additional columns to remove
+unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "EMPLOYEE_ID", "PARENT_OFFICE_ID", "TEAM_LEADER_ID", "PRODUCTION_SERVICE_NUMBER", "PRODUCTION_INSTALL_FEES_COLLECTED", "CLOSED_SALE", "PRODUCTION_EFP" )  
+
+# Remove unwanted columns from CSV data
+data.clean_noNA <- data.clean_noNA[ , !names(data.clean_noNA) %in% unwanted_cols]
+
+```
+
+
+# Split into test/train
+```{r}
+
+# Turn chr vars into factor form
+data.clean_noNA[, c("OPPORTUNITY_TYPE", "FINANCE_TYPE", 
+                     "TENURE", "PRODUCTION_COMMISSION_TYPE_CATEGORY")] <- 
+  lapply(data.clean_noNA[, c("OPPORTUNITY_TYPE", "FINANCE_TYPE", 
+                             "TENURE", "PRODUCTION_COMMISSION_TYPE_CATEGORY")], as.factor)
+
+# Set random seed for replication
+set.seed(123)
+
+# Define sample / split
+# Generate indices for the training set (80% of the data)
+train_index <- sample(seq_len(nrow(data.clean_noNA)), size = 0.8 * nrow(data.clean_noNA), replace = FALSE)
+
+# Subset the data into training and test sets
+train <- data.clean_noNA[train_index, ]
+test  <- data.clean_noNA[-train_index, ]
+```
+
+
+# Simple linear stepwise (both directions)
+
+```{r}
+
+# Create simple LM from data
+f.model <- lm( PRODUCTION_TOTAL_RMR ~ . , data = train )
+
+# Turn off warnings...
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  f.model <- step( f.model, 
+                   direction = "both", # Bidirection
+                   trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( f.model )
+
+```
+
+
+```{r}
+int.model <- lm( PRODUCTION_TOTAL_RMR ~ . + TENURE*. , data = train )
+
+# Turn off warnings...
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  int.model <- step( int.model, 
+                     direction = "backward", # Bidirection
+                     trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( int.model )
+```
+
+
+#. GAM
+
+```{r}
+
+mod_gam1 = gam(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + PRODUCTION_IS_UPGRADE + KIT_PREMIUM_PACKAGE + PRODUCTION_IS_VALID_INSTALL + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY, data = train)
+summary(mod_gam1)
+
+```
+
+
+# Random Forest
+
+```{r}
+
+
+rf<- randomForest(PRODUCTION_TOTAL_RMR~. + TENURE*., data=train, importance = TRUE)
+
+print(rf)
+
+```
+```{r}
+
+
+
+
+```
+
+
+
+
+
+# Cross Validation
+```{r}
+
+# Remove RMR column
+features <- data.clean_noNA[,-12]
+
+labels <- data.clean_noNA$PRODUCTION_TOTAL_RMR
+
+folds <- 5
+
+rfcv(features,labels,folds)
+
+
+```
+# rf importance
+
+```{r}
+
+rf_importance <- rf$importance
+
+importance_plot <- ggplot(data = as.data.frame(rf_importance),
+                          aes(x = reorder(rownames(rf_importance), 
+                                          IncNodePurity),  y = IncNodePurity)) + 
+  geom_bar(stat = "identity") + coord_flip() +
+  labs(title = "Figure 1: Feature Importance", x = "Feature", y = "Mean Decrease in Gini")
+
+print(importance_plot)
+
+```
+
+
+```{r}
+data.clean_noNA$PRODUCTION_TOTAL_RMR[data.clean_noNA$PRODUCTION_TOTAL_RMR<0] <- 0
+
+Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = FINANCE_TYPE, y = PRODUCTION_TOTAL_RMR, fill=TENURE)) +  
+  geom_bar(stat = "identity", position=position_dodge(), fun='mean') +   
+  labs(title = "Tenure vs Financing")
+Tenure.Finance  # Display the plot
+
+
+```
+```{r}
+Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = OPPORTUNITY_TYPE, y = PRODUCTION_TOTAL_RMR, fill=TENURE)) +  
+  geom_bar(stat = "identity", position='fill', fun='mean') +   
+  labs(title = "Tenure vs Financing")
+Tenure.Finance  # Display the plot
+```
+```{r}
+Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = TENURE, y=..count.., fill=TENURE)) + 
+  geom_bar() +   
+  facet_grid(OPPORTUNITY_TYPE~., scales="free") +
+  labs(title = "Tenure vs Financing")
+Tenure.Finance  # Display the plot
+```
+```{r}
+ggpie(data=data.clean_noNA, group_key="OPPORTUNITY_TYPE", count_type = "full")
+```
+
+
+
+```{r}
+
+
+ggplot(data = data.clean_noNA, aes(fill=TENURE, y=FINANCE_TYPE, x=specie)) + 
+    geom_bar(position="stack", stat="identity") +
+    ggtitle("Studying 4 species..") +
+    xlab("")
+
+```
+
+
+
+# Interaction Terms
+
+
+```{r}
+
+
+
+
+```
