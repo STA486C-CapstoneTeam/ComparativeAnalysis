@@ -130,6 +130,16 @@ summary(mod_gam1)
 # Random Forest
 
 ```{r}
+rf<- randomForest(PRODUCTION_TOTAL_RMR~. , data=train, importance = TRUE)
+
+
+
+print(rf)
+
+```
+
+
+# RF attempt 2
 
 
 rf<- randomForest(PRODUCTION_TOTAL_RMR~. + OPPORTUNITY_TYPE:TENURE + FINANCE_TYPE:TENURE + 
@@ -137,15 +147,23 @@ rf<- randomForest(PRODUCTION_TOTAL_RMR~. + OPPORTUNITY_TYPE:TENURE + FINANCE_TYP
     TENURE:PRODUCTION_IS_VALID_INSTALL + TENURE:PRODUCTION_COMMISSION_TYPE_CATEGORY + 
     TENURE:PRODUCTION_IS_SAME_DAY + TENURE:PRODUCTION_IS_CHARITY, data=train, importance = TRUE)
 
-print(rf)
-
-```
 
 
 
-```{r}
+train_expanded <- model.matrix(~ 0 + . + OPPORTUNITY_TYPE:TENURE + FINANCE_TYPE:TENURE + 
+                               TENURE:PRODUCTION_IS_FUNDED + TENURE:KIT_PREMIUM_PACKAGE + 
+                               TENURE:PRODUCTION_IS_VALID_INSTALL + TENURE:PRODUCTION_COMMISSION_TYPE_CATEGORY + 
+                               TENURE:PRODUCTION_IS_SAME_DAY + TENURE:PRODUCTION_IS_CHARITY, 
+                               data=train)
 
+# Convert matrix to data frame
+train_expanded <- as.data.frame(train_expanded)
 
+# Add the response variable manually
+train_expanded$PRODUCTION_TOTAL_RMR <- train$PRODUCTION_TOTAL_RMR
+
+# Fit random forest model
+rf <- randomForest(PRODUCTION_TOTAL_RMR ~ ., data=train_expanded, importance=TRUE)
 
 
 ```
