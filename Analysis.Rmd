@@ -30,6 +30,9 @@ unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "EMPLOYEE_ID"
 # Remove unwanted columns from CSV data
 data.clean_noNA <- data.clean_noNA[ , !names(data.clean_noNA) %in% unwanted_cols]
 
+# absolute value the negative values 
+data.clean_noNA$PRODUCTION_TOTAL_RMR <- abs(data.clean_noNA$PRODUCTION_TOTAL_RMR)
+
 ```
 
 
@@ -95,6 +98,24 @@ suppressWarnings(
 summary( int.model )
 ```
 
+# Forward step LM
+
+```{r}
+# Empty model 
+emp_model <- lm(PRODUCTION_TOTAL_RMR ~ 1, data = data.clean_noNA)
+step(emp_model)
+
+forward_model <- lm(PRODUCTION_TOTAL_RMR ~ .+ TENURE*., data = data.clean_noNA)
+
+forward_model <- step(forward_model, direction = "forward", scope = formula(~ .))
+
+summary(forward_model)
+
+```
+
+
+
+
 
 #. GAM
 
@@ -111,11 +132,17 @@ summary(mod_gam1)
 ```{r}
 
 
-rf<- randomForest(PRODUCTION_TOTAL_RMR~., data=train, importance = TRUE)
+rf<- randomForest(PRODUCTION_TOTAL_RMR~. + OPPORTUNITY_TYPE:TENURE + FINANCE_TYPE:TENURE + 
+    TENURE:PRODUCTION_IS_FUNDED + TENURE:KIT_PREMIUM_PACKAGE + 
+    TENURE:PRODUCTION_IS_VALID_INSTALL + TENURE:PRODUCTION_COMMISSION_TYPE_CATEGORY + 
+    TENURE:PRODUCTION_IS_SAME_DAY + TENURE:PRODUCTION_IS_CHARITY, data=train, importance = TRUE)
 
 print(rf)
 
 ```
+
+
+
 ```{r}
 
 
@@ -141,6 +168,7 @@ rfcv(features,labels,folds)
 
 
 ```
+
 # rf importance
 
 ```{r}
@@ -169,15 +197,7 @@ Tenure.Finance  # Display the plot
 
 ```
 
-```{r}
 
-
-ggplot(data = data.clean_noNA, aes(fill=TENURE, y=FINANCE_TYPE, x=specie)) + 
-    geom_bar(position="stack", stat="identity") +
-    ggtitle("Studying 4 species..") +
-    xlab("")
-
-```
 
 
 
@@ -307,9 +327,14 @@ ggplot(Soph_pie_data, aes(x = 2, y = Proportion, fill = Category)) +
   coord_polar(theta = "y") + 
   geom_text(aes(label = scales::percent(Proportion, accuracy = 1)),
             position = position_stack(vjust = 0.5), size = 3) +
-  labs(title = "Veteran Opportunity Type Proportion") + 
+  labs(title = "Sophomore Opportunity Type Proportion") + 
   theme_void() + 
   xlim(0.5, 2.5)
 
 
 ```
+
+
+
+
+
