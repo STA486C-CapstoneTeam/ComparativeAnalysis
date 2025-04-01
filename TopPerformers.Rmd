@@ -68,38 +68,42 @@ print(head(sales_data))
 
 ```{r}
 
-ggplot( data=sales_data, aes( x=FINANCE_TYPE, y=PRODUCTION_TOTAL_RMR, by=top_salesperson ) ) +
-  geom_boxplot() +
-  facet_grid(.~PRODUCTION_IS_UPGRADE)
+# Calculate the proportion of each sales type by 'top_seller'
+sales_summary <- sales_data %>%
+  group_by(top_salesperson, TENURE) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  group_by(top_salesperson) %>%
+  mutate(proportion = count / sum(count))
+
+# View the result
+print(sales_summary)
+
 
 ```
 
+
 ```{r}
 
-library(dplyr)
+sales_data <- read.csv('Sample Sales Data(2025-01-15 10_13am (2)).csv')
 
-# Load the data
-sales_data <- read.csv("path_to_your_file.csv")
+sales_summary <- sales_data %>%
+  group_by(EMPLOYEE_ID) %>%
+  summarise(
+    total_sales = n(),  # Number of sales
+    total_sale_amount = sum(PRODUCTION_TOTAL_RMR, na.rm = TRUE)  # Total sale amount
+  ) %>%
+  mutate(
+    sales_rank = ntile(total_sale_amount, 10),  # Rank the employees into 10 quantiles
+    performance_category = case_when(
+      sales_rank == 1 ~ "Bottom 10%",         # Employees in the bottom 10%
+      sales_rank == 10 ~ "Top 10%",           # Employees in the top 10%
+      TRUE ~ "Middle 80%"                    # Employees in the middle 80%
+    )
+  )
 
-# Clean the data (if needed)
-sales_data <- sales_data %>%
-  filter(!is.na(sale_amount))
+print(sales_summary)
 
-# Group by salesperson and count the number of sales
-sales_count_by_person <- sales_data %>%
-  group_by(salesperson) %>%
-  summarise(num_sales = n())
-
-# Calculate the threshold for the top 10% based on the number of sales
-top_10_percent_threshold <- floor(nrow(sales_count_by_person) * 0.10)
-
-# Sort salespeople by num_sales in descending order and get the top 10%
-top_salespeople <- sales_count_by_person %>%
-  arrange(desc(num_sales)) %>%
-  slice(1:top_10_percent_threshold)
-
-# Create a vector of top salesperson names
-top_salespeople_names <- top_salespeople$salesperson
-
-
+ggplot(data=sales_summary, aes(x=total_sales, y=total_sale_amount, color=performance_category)) +
+  geom_point()
 ```
