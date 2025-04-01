@@ -105,5 +105,7 @@ sales_summary <- sales_data %>%
 print(sales_summary)
 
 ggplot(data=sales_summary, aes(x=total_sales, y=total_sale_amount, color=performance_category)) +
-  geom_point()
+  geom_point() +
+  labs( title="Total Sales Revenue vs. Total Attempted Sales by Salesperson",
+        x="Total Attempted Sales", y="Total Sales Revenue", color="Sales Performance")
 ```
