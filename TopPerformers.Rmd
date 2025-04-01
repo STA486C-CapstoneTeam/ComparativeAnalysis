@@ -1,0 +1,105 @@
+---
+title: "Top Performers"
+author: "Richard McCormick"
+date: "2025-04-01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library( ggplot2 )
+library( dplyr )
+```
+
+## Import Data
+
+```{r}
+
+# Ingest data from CSV file
+data.clean_noNA <- read.csv( "data_clean_noNA.csv" )
+
+# Add additional columns to remove
+unwanted_cols <- c("X", "ACCOUNT_NAME", "OPPORTUNITY_ID", "STATE", "PARENT_OFFICE_ID", "TEAM_LEADER_ID", "PRODUCTION_SERVICE_NUMBER", "PRODUCTION_INSTALL_FEES_COLLECTED", "CLOSED_SALE", "PRODUCTION_EFP" )  
+
+# Remove unwanted columns from CSV data
+data.clean_noNA <- data.clean_noNA[ , !names(data.clean_noNA) %in% unwanted_cols]
+
+# absolute value the negative values 
+data.clean_noNA$PRODUCTION_TOTAL_RMR <- abs(data.clean_noNA$PRODUCTION_TOTAL_RMR)
+
+```
+
+
+## Identify top 10% of salespeople
+
+```{r}
+
+sales_by_person <- data.clean_noNA %>%
+  group_by( EMPLOYEE_ID ) %>%
+  summarise( total_sales = sum( PRODUCTION_TOTAL_RMR, na.rm = TRUE ) )
+
+sorted_sales <- sales_by_person %>%
+  arrange(desc(total_sales))
+
+top_10_percent <- floor(nrow(sorted_sales) * 0.10)
+
+# Get the top 10% of salespeople
+top_salespeople <- sorted_sales[1:top_10_percent, ]
+
+# Get a vector of salesperson names in the top 10%
+top_salespeople_names <- top_salespeople$EMPLOYEE_ID
+
+# Filter the original sales data to include only the top 10% salespeople
+top_sales_data <- data.clean_noNA %>%
+  filter(EMPLOYEE_ID %in% top_salespeople_names)
+
+# View the top sales data (entries of the top 10% salespeople)
+print(top_sales_data)
+
+# Add a new column to the original sales data to indicate top salespeople
+sales_data <- data.clean_noNA %>%
+  mutate(top_salesperson = ifelse(EMPLOYEE_ID %in% top_salespeople_names, TRUE, FALSE))
+
+# View the modified sales data with the new 'top_salesperson' column
+print(head(sales_data))
+```
+
+## Graph results
+
+```{r}
+
+ggplot( data=sales_data, aes( x=FINANCE_TYPE, y=PRODUCTION_TOTAL_RMR, by=top_salesperson ) ) +
+  geom_boxplot() +
+  facet_grid(.~PRODUCTION_IS_UPGRADE)
+
+```
+
+```{r}
+
+library(dplyr)
+
+# Load the data
+sales_data <- read.csv("path_to_your_file.csv")
+
+# Clean the data (if needed)
+sales_data <- sales_data %>%
+  filter(!is.na(sale_amount))
+
+# Group by salesperson and count the number of sales
+sales_count_by_person <- sales_data %>%
+  group_by(salesperson) %>%
+  summarise(num_sales = n())
+
+# Calculate the threshold for the top 10% based on the number of sales
+top_10_percent_threshold <- floor(nrow(sales_count_by_person) * 0.10)
+
+# Sort salespeople by num_sales in descending order and get the top 10%
+top_salespeople <- sales_count_by_person %>%
+  arrange(desc(num_sales)) %>%
+  slice(1:top_10_percent_threshold)
+
+# Create a vector of top salesperson names
+top_salespeople_names <- top_salespeople$salesperson
+
+
+```
