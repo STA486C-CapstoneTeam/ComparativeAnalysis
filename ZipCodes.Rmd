@@ -1,0 +1,899 @@
+---
+title: "Zip Codes"
+author: "Richard McCormick"
+date: "2025-04-06"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tigris)
+library(ggplot2)
+library(dplyr)
+library(sf)
+```
+
+## 
+
+```{r}
+# Ingest data from CSV file
+data <- read.csv( "Sample Sales Data(2025-01-15 10_13am (2)).csv" )
+
+REMOVE_COLS <- c(
+  #"ZIP_CODE",
+  "OPPORTUNITY_CREATED_DATE",
+  "MANAGEMENT_GROUP_LEADER_ID",
+  "SENIOR_MANAGEMENT_GROUP_LEADER_ID",
+  "REGION_LEADER_ID",
+  "SENIOR_REGION_LEADER_ID",
+  "PARTNERSHIP_LEADER_ID",
+  "PRE_INSTALL_SURVEY_ID",
+  "PRE_INSTALL_SURVEY_CREATED_DATE_TIME",
+  "PRE_INSTALL_LATEST_SURVEY_PASS_DATE",
+  "PRODUCTION_INSTALL_DATE_TIME",
+  "PRODUCTION_IS_DIY",
+  "CANCELLATION_DATE_TIME",
+  "ACCOUNT_NAME", 
+  "OPPORTUNITY_ID", 
+  "STATE", 
+  "EMPLOYEE_ID", 
+  "PARENT_OFFICE_ID", 
+  "TEAM_LEADER_ID", 
+  "PRODUCTION_SERVICE_NUMBER", 
+  # "PRODUCTION_IS_FUNDED", 
+  "PRODUCTION_INSTALL_FEES_COLLECTED" 
+  # "OPPORTUNITY_TYPE"
+)
+
+
+data.reduced <- data[ , !names(data) %in% REMOVE_COLS]
+
+data.reduced <- na.omit(data.reduced)
+
+data.reduced$PRODUCTION_TOTAL_RMR <- abs(data.reduced$PRODUCTION_TOTAL_RMR)
+
+
+
+```
+
+
+
+```{r}
+
+average_sales_by_zip <- data.reduced %>%
+  group_by( ZIP_CODE ) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+zip_map_data <- zip_shapes %>%
+  left_join(average_sales_by_zip, by = c("GEOID20" = "ZIP_CODE"))
+
+
+
+```
+
+
+```{r}
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(viridis)
+
+# 1. Summarize average sales by ZIP code
+average_sales_by_zip <- data.reduced %>%
+  group_by(ZIP_CODE) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+# 2. Read ZIP shapefile
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+# 3. Format ZIP codes to 5-digit strings
+average_sales_by_zip$ZIP_CODE <- sprintf("%05s", average_sales_by_zip$ZIP_CODE)
+
+# 4. Join sales data to shapefile
+zip_map_data <- zip_shapes %>%
+  left_join(average_sales_by_zip, by = c("GEOID20" = "ZIP_CODE"))
+
+# 5. Filter out Alaska, Hawaii, and territories by excluding ZIP prefix
+zip_map_conus <- zip_map_data %>%
+  filter(
+    !startsWith(GEOID20, "96"),  # Hawaii
+    !startsWith(GEOID20, "99"),  # Alaska
+    !startsWith(GEOID20, "00"),  # Territories like Puerto Rico, Guam
+    !startsWith(GEOID20, "90")   # Sometimes includes Pacific islands
+  )
+
+```
+
+```{r}
+# 6. Plot CONUS-only map
+ggplot(zip_map_conus) +
+  geom_sf(aes(fill = average_sale), color = NA) +
+  scale_fill_viridis_c(option = "inferno", na.value = "grey90") +
+  labs(
+    title = "Average Sale Amount by ZIP Code (CONUS Only)",
+    fill = "Avg Sale"
+  ) +
+  theme_minimal()
+```
+
+
+```{r}
+# Install if needed
+# install.packages("tidycensus")
+library(tidycensus)
+
+# Set your Census API key (you can get one at https://api.census.gov/data/key_signup.html)
+census_api_key("cf100beea34bd6a2c7cb8db7dabb730da7eceede", install = TRUE, overwrite=TRUE)
+
+# Load median household income by ZCTA (ZIP-level proxy)
+income_data <- get_acs(
+  geography = "zcta",
+  variables = "B19013_001",  # Median household income
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+)
+
+# Rename for clarity
+income_data <- income_data %>%
+  rename(ZIP_CODE = GEOID, median_income = B19013_001E)
+
+```
+```{r}
+zip_map_conus <- zip_map_conus %>%
+  left_join(income_data, by = c("GEOID20" = "ZIP_CODE"))
+```
+
+```{r}
+ggplot(zip_map_conus, aes(x = median_income, y = average_sale)) +
+  geom_point(alpha = 0.6, color = "darkblue") +
+  geom_smooth(method = "lm", se = TRUE, color = "red") +
+  labs(
+    title = "Relationship Between Median Income and Average Sale",
+    x = "Median Household Income (USD)",
+    y = "Average Sale Amount (USD)"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+library(scales)
+
+# Extract breaks from the cut to use in labels
+income_min <- min(zip_data_clean$median_income)
+income_max <- max(zip_data_clean$median_income)
+income_breaks <- seq(income_min, income_max, by = 10000)
+
+# Create labels like "$20,000–$30,000"
+income_labels <- paste0(
+  dollar(income_breaks[-length(income_breaks)]),
+  " – ",
+  dollar(income_breaks[-1])
+)
+
+# Re-bin with labels
+zip_data_clean <- zip_data_clean %>%
+  mutate(income_bin = cut(
+    median_income,
+    breaks = income_breaks,
+    labels = income_labels,
+    include.lowest = TRUE
+  ))
+
+# Recalculate summary
+income_sales_summary <- zip_data_clean %>%
+  group_by(income_bin) %>%
+  summarize(avg_sale = mean(average_sale), .groups = "drop")
+
+```
+
+```{r}
+ggplot(income_sales_summary, aes(x = income_bin, y = avg_sale, group = 1)) +
+  geom_line(color = "darkgreen", size = 1) +
+  geom_point(color = "darkgreen", size = 2) +
+  labs(
+    title = "Trend of Average Sales by Income Bin",
+    x = "Income Range",
+    y = "Average Sale"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+```{r}
+zip_map_conus <- zip_map_conus %>%
+  left_join(zip_data %>% select(ZIP_CODE, ideal_income_range), 
+            by = c("GEOID20" = "ZIP_CODE"))
+```
+
+```{r}
+# Load libraries
+library(dplyr)
+library(forcats)
+library(scales)
+library(ggplot2)
+
+
+# Step 2: Create income bins
+income_breaks <- seq(
+  floor(min(sales_with_income$median_income, na.rm = TRUE) / 10000) * 10000,
+  ceiling(max(sales_with_income$median_income, na.rm = TRUE) / 10000) * 10000,
+  by = 10000
+)
+
+sales_with_income <- sales_with_income %>%
+  mutate(income_bin = cut(
+    median_income,
+    breaks = income_breaks,
+    include.lowest = TRUE
+  ))
+
+# Step 3: Format labels nicely
+sales_with_income <- sales_with_income %>%
+  mutate(
+    income_bin = fct_relabel(income_bin, ~ gsub("\\[|\\]", "", .x)),
+    income_bin = fct_relabel(income_bin, function(x) {
+      parts <- strsplit(x, ",")
+      sapply(parts, function(p) {
+        paste0(dollar(as.numeric(p[1])), " - ", dollar(as.numeric(p[2])))
+      })
+    })
+  )
+
+# Step 4: Count number of sales per bin
+sales_by_income <- sales_with_income %>%
+  group_by(income_bin) %>%
+  summarize(num_sales = n(), .groups = "drop") %>%
+  arrange(income_bin)
+
+# Step 5: Calculate cumulative percentage
+sales_by_income <- sales_by_income %>%
+  mutate(
+    cum_sales = cumsum(num_sales),
+    total_sales = sum(num_sales),
+    cum_pct = cum_sales / total_sales
+  )
+
+# Step 6: Identify bins between 10% and 90%
+middle_80 <- sales_by_income %>%
+  filter(cum_pct >= 0.10 & cum_pct <= 0.90)
+
+# Step 7: Plot and highlight those bins
+ggplot(sales_by_income, aes(x = income_bin, y = num_sales)) +
+  geom_col(fill = "#CBD5E8") +
+  geom_col(data = middle_80, aes(x = income_bin, y = num_sales), fill = "#4C72B0") +
+  labs(
+    title = "Number of Sales by ZIP Code Median Income",
+    subtitle = "Highlighted bars show income ranges containing 80% of all sales",
+    x = "Median Income Range",
+    y = "Number of Sales"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+# Count sales by ZIP income
+income_ranked <- sales_with_income %>%
+  arrange(median_income) %>%
+  mutate(
+    row_id = row_number(),
+    total = n(),
+    pct = row_id / total
+  )
+
+# Keep only the rows in the middle 80%
+income_80 <- income_ranked %>%
+  filter(pct >= 0.10 & pct <= 0.90)
+
+# Get the income range
+income_range <- range(income_80$median_income, na.rm = TRUE)
+print(income_range)  # This gives the ideal income range
+
+# Function to score ZIPs: 1 = perfect match, 0 = far outside
+zip_map_conus <- zip_map_conus %>%
+  mutate(
+    income_score = case_when(
+      is.na(median_income) ~ NA_real_,
+      median_income >= income_range[1] & median_income <= income_range[2] ~ 1,
+      median_income < income_range[1] ~ 1 - (income_range[1] - median_income) / income_range[1],
+      median_income > income_range[2] ~ 1 - (median_income - income_range[2]) / income_range[2]
+    ),
+    income_score = pmax(0, pmin(income_score, 1))  # Clamp between 0 and 1
+  )
+
+library(ggplot2)
+
+ggplot(zip_map_conus) +
+  geom_sf(aes(fill = income_score), color = NA) +
+  scale_fill_viridis_c(option = "inferno", na.value = "grey90", name = "Target Match") +
+  labs(
+    title = "Sales Target Heatmap by ZIP Code",
+    subtitle = paste0("Based on income range: $", formatC(income_range[1], big.mark = ","), " - $", formatC(income_range[2], big.mark = ",")),
+    caption = "ZIP codes colored by how closely their median income matches the 80% sales range"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+income_ranked <- sales_with_income %>%
+  arrange(median_income) %>%
+  mutate(row_id = row_number(), total = n(), pct = row_id / total)
+
+income_80 <- income_ranked %>% filter(pct >= 0.10 & pct <= 0.90)
+income_range <- range(income_80$median_income, na.rm = TRUE)
+
+# Sales per ZIP
+sales_per_zip <- sales_with_income %>%
+  group_by(ZIP_CODE) %>%
+  summarize(num_sales = n(), .groups = "drop")
+
+#
+zip_model_data <- zip_map_conus %>%
+  left_join(sales_per_zip, by = c("GEOID20" = "ZIP_CODE")) %>%
+  mutate(
+    num_sales = ifelse(is.na(num_sales), 0, num_sales),
+    
+    # Income match score
+    income_score = case_when(
+      is.na(median_income) ~ NA_real_,
+      median_income >= income_range[1] & median_income <= income_range[2] ~ 1,
+      median_income < income_range[1] ~ 1 - (income_range[1] - median_income) / income_range[1],
+      median_income > income_range[2] ~ 1 - (median_income - income_range[2]) / income_range[2]
+    ),
+    income_score = pmax(0, pmin(income_score, 1)),
+
+    # Normalize sales score (avoid dividing by 0)
+    sales_score = ifelse(max(num_sales, na.rm = TRUE) > 0,
+                         num_sales / max(num_sales, na.rm = TRUE),
+                         0),
+
+    # Final targeting score
+    target_score = 0.7 * income_score + 0.3 * sales_score
+  )
+
+
+ggplot(zip_model_data) +
+  geom_sf(aes(fill = target_score), color = NA) +
+  scale_fill_viridis_c(option = "plasma", name = "Target Score", na.value = "grey90") +
+  labs(
+    title = "Sales Target Score by ZIP Code",
+    subtitle = "Weighted score of income match and sales volume",
+    caption = "Higher score = better targeting potential"
+  ) +
+  theme_minimal()
+
+```
+
+
+```{r}
+# Install if needed
+# install.packages("tidycensus")
+library(tidycensus)
+library(dplyr)
+library(sf)
+library(ggplot2)
+
+# Set your Census API key (you can get one at https://api.census.gov/data/key_signup.html)
+census_api_key("cf100beea34bd6a2c7cb8db7dabb730da7eceede", install = TRUE, overwrite = TRUE)
+
+# Load median household income by ZCTA (ZIP-level proxy)
+income_data <- get_acs(
+  geography = "zcta",
+  variables = "B19013_001",  # Median household income
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_income = B19013_001E)
+
+# Load education level data (percent with a bachelor's degree)
+education_data <- get_acs(
+  geography = "zcta",
+  variables = "B15003_022E",  # Bachelor's degree
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, percent_bachelors = B15003_022E)
+
+# Load median home value data
+home_value_data <- get_acs(
+  geography = "zcta",
+  variables = "B25077_001",  # Median home value
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_home_value = B25077_001E)
+
+# Combine the income, education, and home value data
+census_data <- income_data %>%
+  left_join(education_data, by = "ZIP_CODE") %>%
+  left_join(home_value_data, by = "ZIP_CODE")
+
+# Summarize average sales by ZIP code (assuming 'data.reduced' is your sales data)
+average_sales_by_zip <- data.reduced %>%
+  group_by(ZIP_CODE) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+# Read ZIP shapefile
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+# Format ZIP codes to 5-digit strings in the sales data
+average_sales_by_zip$ZIP_CODE <- sprintf("%05s", average_sales_by_zip$ZIP_CODE)
+
+# Join sales data to shapefile
+zip_map_data <- zip_shapes %>%
+  left_join(average_sales_by_zip, by = c("GEOID20" = "ZIP_CODE")) %>%
+  left_join(census_data, by = c("GEOID20" = "ZIP_CODE"))
+
+# Filter out Alaska, Hawaii, and territories by excluding ZIP prefix
+zip_map_conus <- zip_map_data %>%
+  filter(
+    !startsWith(GEOID20, "96"),  # Hawaii
+    !startsWith(GEOID20, "99"),  # Alaska
+    !startsWith(GEOID20, "00"),  # Territories like Puerto Rico, Guam
+    !startsWith(GEOID20, "90")   # Sometimes includes Pacific islands
+  )
+
+# Normalize or scale the census features (e.g., income, education, home value)
+zip_map_conus <- zip_map_conus %>%
+  mutate(
+    scaled_income = scale(median_income),
+    scaled_bachelors = scale(percent_bachelors),
+    scaled_home_value = scale(median_home_value)
+  )
+
+# Create a score for targeting based on the scaled features (you can adjust the weights as needed)
+zip_map_conus <- zip_map_conus %>%
+  mutate(
+    targeting_score = scaled_income + scaled_bachelors + scaled_home_value + log(average_sale + 1)
+  )
+
+# Plot the ZIP codes on a map with their targeting scores
+ggplot(zip_map_conus) +
+  geom_sf(aes(fill = targeting_score)) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "ZIP Code Targeting Score",
+       fill = "Targeting Score")
+```
+
+```{r}
+
+# Install if needed
+# install.packages("tidycensus")
+# install.packages("randomForest")
+# install.packages("dplyr")
+# install.packages("ggplot2")
+# install.packages("sf")
+library(tidycensus)
+library(dplyr)
+library(randomForest)
+library(ggplot2)
+library(sf)
+
+# Set your Census API key (you can get one at https://api.census.gov/data/key_signup.html)
+census_api_key("cf100beea34bd6a2c7cb8db7dabb730da7eceede", install = TRUE, overwrite = TRUE)
+
+# 1. Load census data (income, education, home value)
+income_data <- get_acs(
+  geography = "zcta",
+  variables = "B19013_001",  # Median household income
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_income = B19013_001E)
+
+education_data <- get_acs(
+  geography = "zcta",
+  variables = "B15003_022E",  # Bachelor's degree
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, percent_bachelors = B15003_022E)
+
+home_value_data <- get_acs(
+  geography = "zcta",
+  variables = "B25077_001",  # Median home value
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_home_value = B25077_001E)
+
+# Combine census data
+census_data <- income_data %>%
+  left_join(education_data, by = "ZIP_CODE") %>%
+  left_join(home_value_data, by = "ZIP_CODE")
+
+# 2. Summarize sales data by ZIP code (assuming 'data.reduced' is your sales data)
+average_sales_by_zip <- data.reduced %>%
+  group_by(ZIP_CODE) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+# Format ZIP codes to 5-digit strings in sales data
+average_sales_by_zip$ZIP_CODE <- sprintf("%05s", average_sales_by_zip$ZIP_CODE)
+
+# 3. Merge sales data with census data
+sales_census_data <- left_join(census_data, average_sales_by_zip, by = "ZIP_CODE")
+
+# 4. Remove rows with missing sales data to train the model (only use the rows with both census and sales data)
+sales_census_data <- sales_census_data %>%
+  filter(!is.na(average_sale), 
+         !is.na(median_income), 
+         !is.na(percent_bachelors), 
+         !is.na(median_home_value))
+
+# 5. Train the model (random forest or any other model you prefer)
+model <- randomForest(average_sale ~ median_income + percent_bachelors + median_home_value,
+                      data = sales_census_data, importance = TRUE)
+
+# 6. Predict sales for all ZIP codes (even those without sales data)
+# Predict for the census data, which includes all ZIP codes, not just those with sales data
+all_zip_data <- census_data
+
+# Predict sales for all ZIP codes, including those with no sales data
+all_zip_data$predicted_sales <- predict(model, newdata = all_zip_data)
+
+# 7. Rank ZIP codes based on predicted sales
+ranked_zip_codes <- all_zip_data %>%
+  arrange(desc(predicted_sales))
+
+# 8. Visualize the results (plot the top ZIP codes with highest predicted sales)
+ggplot(ranked_zip_codes) +
+  geom_bar(aes(x = reorder(ZIP_CODE, predicted_sales), y = predicted_sales), stat = "identity") +
+  theme_minimal() +
+  labs(title = "Predicted Sales by ZIP Code", x = "ZIP Code", y = "Predicted Sales") +
+  coord_flip()
+
+# 9. Optionally, visualize on a map (using shapefile)
+# Read ZIP shapefile for mapping
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+# Format ZIP codes to 5-digit strings in shapefile data
+zip_shapes$GEOID20 <- sprintf("%05s", zip_shapes$GEOID20)
+
+# Merge the predicted sales data with the shapefile
+zip_map_data <- zip_shapes %>%
+  left_join(ranked_zip_codes, by = c("GEOID20" = "ZIP_CODE"))
+
+# Plot the ZIP code map with predicted sales
+ggplot(zip_map_data) +
+  geom_sf(aes(fill = predicted_sales)) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "Predicted Sales by ZIP Code", fill = "Predicted Sales")
+
+
+```
+
+```{r}
+# Install necessary packages if not already installed
+# install.packages("tidycensus")
+# install.packages("randomForest")
+# install.packages("dplyr")
+# install.packages("ggplot2")
+# install.packages("sf")
+
+# Load necessary libraries
+library(tidycensus)
+library(dplyr)
+library(randomForest)
+library(ggplot2)
+library(sf)
+
+# Set your Census API key (you can get one at https://api.census.gov/data/key_signup.html)
+census_api_key("cf100beea34bd6a2c7cb8db7dabb730da7eceede", install = TRUE, overwrite = TRUE)
+
+# 1. Load census data (income, education, home value)
+income_data <- get_acs(
+  geography = "zcta",
+  variables = "B19013_001",  # Median household income
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_income = B19013_001E)
+
+education_data <- get_acs(
+  geography = "zcta",
+  variables = "B15003_022E",  # Bachelor's degree
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, percent_bachelors = B15003_022E)
+
+home_value_data <- get_acs(
+  geography = "zcta",
+  variables = "B25077_001",  # Median home value
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_home_value = B25077_001E)
+
+# Combine census data
+census_data <- income_data %>%
+  left_join(education_data, by = "ZIP_CODE") %>%
+  left_join(home_value_data, by = "ZIP_CODE")
+
+# 2. Summarize sales data by ZIP code (assuming 'data.reduced' is your sales data)
+# 'data.reduced' should be a data frame containing your sales data, with columns including 'ZIP_CODE' and 'PRODUCTION_TOTAL_RMR'
+average_sales_by_zip <- data.reduced %>%
+  group_by(ZIP_CODE) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+# Format ZIP codes to 5-digit strings in sales data
+average_sales_by_zip$ZIP_CODE <- sprintf("%05s", average_sales_by_zip$ZIP_CODE)
+
+# 3. Merge sales data with census data
+sales_census_data <- left_join(census_data, average_sales_by_zip, by = "ZIP_CODE")
+
+# 4. Remove rows with missing sales data (only use the rows with both census and sales data)
+sales_census_data <- sales_census_data %>%
+  filter(!is.na(average_sale), 
+         !is.na(median_income), 
+         !is.na(percent_bachelors), 
+         !is.na(median_home_value))
+
+# 5. Train the model to identify factors correlated with higher sales
+# Using a Random Forest model to predict sales based on census data
+model <- randomForest(average_sale ~ median_income + percent_bachelors + median_home_value,
+                      data = sales_census_data, importance = TRUE)
+
+# 6. Analyze the importance of each feature
+importance(model)
+
+# 7. Rank ZIP codes based on their predicted sales potential
+# First, we will predict the sales potential for all ZIP codes based on the model
+census_data$predicted_sales <- predict(model, newdata = census_data)
+
+# Rank the ZIP codes by predicted sales potential
+ranked_zip_codes <- census_data %>%
+  arrange(desc(predicted_sales))
+
+# 8. Visualize the results (plot the top ZIP codes with highest predicted sales)
+ggplot(ranked_zip_codes) +
+  geom_bar(aes(x = reorder(ZIP_CODE, predicted_sales), y = predicted_sales), stat = "identity") +
+  theme_minimal() +
+  labs(title = "Predicted Sales Potential by ZIP Code", x = "ZIP Code", y = "Predicted Sales Potential") +
+  coord_flip()
+
+# 9. Optionally, visualize on a map (using shapefile)
+# Read ZIP shapefile for mapping (replace with your actual shapefile path)
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+# Format ZIP codes to 5-digit strings in shapefile data
+zip_shapes$GEOID20 <- sprintf("%05s", zip_shapes$GEOID20)
+
+# Merge the predicted sales data with the shapefile
+zip_map_data <- zip_shapes %>%
+  left_join(ranked_zip_codes, by = c("GEOID20" = "ZIP_CODE"))
+
+# Plot the ZIP code map with predicted sales potential
+ggplot(zip_map_data) +
+  geom_sf(aes(fill = predicted_sales)) +
+  scale_fill_viridis_c() +
+  theme_minimal() +
+  labs(title = "Predicted Sales Potential by ZIP Code", fill = "Predicted Sales Potential")
+
+```
+
+```{r}
+# Install necessary packages if not already installed
+# install.packages("tidycensus")
+# install.packages("randomForest")
+# install.packages("dplyr")
+# install.packages("ggplot2")
+# install.packages("sf")
+
+# Load necessary libraries
+library(tidycensus)
+library(dplyr)
+library(randomForest)
+library(ggplot2)
+library(sf)
+
+# Set your Census API key (you can get one at https://api.census.gov/data/key_signup.html)
+census_api_key("cf100beea34bd6a2c7cb8db7dabb730da7eceede", install = TRUE, overwrite = TRUE)
+
+# 1. Load census data (income, education, home value)
+income_data <- get_acs(
+  geography = "zcta",
+  variables = "B19013_001",  # Median household income
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_income = B19013_001E)
+
+education_data <- get_acs(
+  geography = "zcta",
+  variables = "B15003_022E",  # Bachelor's degree
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, percent_bachelors = B15003_022E)
+
+home_value_data <- get_acs(
+  geography = "zcta",
+  variables = "B25077_001",  # Median home value
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_home_value = B25077_001E)
+
+# Combine census data
+census_data <- income_data %>%
+  left_join(education_data, by = "ZIP_CODE") %>%
+  left_join(home_value_data, by = "ZIP_CODE")
+
+# 2. Summarize sales data by ZIP code (assuming 'data.reduced' is your sales data)
+# 'data.reduced' should be a data frame containing your sales data, with columns including 'ZIP_CODE' and 'PRODUCTION_TOTAL_RMR'
+average_sales_by_zip <- data.reduced %>%
+  group_by(ZIP_CODE) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+# Format ZIP codes to 5-digit strings in sales data
+average_sales_by_zip$ZIP_CODE <- sprintf("%05s", average_sales_by_zip$ZIP_CODE)
+
+# 3. Merge sales data with census data
+sales_census_data <- left_join(census_data, average_sales_by_zip, by = "ZIP_CODE")
+
+# 4. Remove rows with missing sales data (only use the rows with both census and sales data)
+sales_census_data <- sales_census_data %>%
+  filter(!is.na(average_sale), 
+         !is.na(median_income), 
+         !is.na(percent_bachelors), 
+         !is.na(median_home_value))
+
+# 5. Train the model to identify factors correlated with higher sales
+# Using a Random Forest model to predict sales based on census data
+model <- randomForest(average_sale ~ median_income + percent_bachelors + median_home_value,
+                      data = sales_census_data, importance = TRUE)
+
+# 6. Analyze the importance of each feature
+importance(model)
+
+# 7. Add predicted sales potential to the census data
+census_data$predicted_sales <- predict(model, newdata = census_data)
+
+# 8. Visualize the results with a continuous gradient using geom_sf (on a map)
+# Read ZIP shapefile for mapping (replace with your actual shapefile path)
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+# Format ZIP codes to 5-digit strings in shapefile data
+zip_shapes$GEOID20 <- sprintf("%05s", zip_shapes$GEOID20)
+
+# Merge the predicted sales data with the shapefile
+zip_map_data <- zip_shapes %>%
+  left_join(census_data, by = c("GEOID20" = "ZIP_CODE"))
+
+# Plot the ZIP code map with predicted sales potential as a gradient
+ggplot(zip_map_data) +
+  geom_sf(aes(fill = predicted_sales)) +
+  scale_fill_viridis_c(option = "inferno") +  # Optionally use "viridis" or "inferno" for color palette
+  theme_minimal() +
+  labs(title = "Predicted Sales Potential by ZIP Code", fill = "Predicted Sales Potential") +
+  theme(legend.position = "right")
+
+```
+
+```{r}
+# Load necessary libraries
+library(tidycensus)
+library(dplyr)
+library(randomForest)
+library(ggplot2)
+library(sf)
+
+# Set your Census API key (you can get one at https://api.census.gov/data/key_signup.html)
+census_api_key("cf100beea34bd6a2c7cb8db7dabb730da7eceede", install = TRUE, overwrite = TRUE)
+
+# 1. Load census data (income, education, home value)
+income_data <- get_acs(
+  geography = "zcta",
+  variables = "B19013_001",  # Median household income
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_income = B19013_001E)
+
+education_data <- get_acs(
+  geography = "zcta",
+  variables = "B15003_022E",  # Bachelor's degree
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, percent_bachelors = B15003_022E)
+
+home_value_data <- get_acs(
+  geography = "zcta",
+  variables = "B25077_001",  # Median home value
+  year = 2021,
+  survey = "acs5",
+  output = "wide"
+) %>%
+  rename(ZIP_CODE = GEOID, median_home_value = B25077_001E)
+
+# Combine census data
+census_data <- income_data %>%
+  left_join(education_data, by = "ZIP_CODE") %>%
+  left_join(home_value_data, by = "ZIP_CODE")
+
+# 2. Summarize sales data by ZIP code (assuming 'data.reduced' is your sales data)
+# 'data.reduced' should be a data frame containing your sales data, with columns including 'ZIP_CODE' and 'PRODUCTION_TOTAL_RMR'
+average_sales_by_zip <- data.reduced %>%
+  group_by(ZIP_CODE) %>%
+  summarize(average_sale = mean(PRODUCTION_TOTAL_RMR, na.rm = TRUE))
+
+# Format ZIP codes to 5-digit strings in sales data
+average_sales_by_zip$ZIP_CODE <- sprintf("%05s", average_sales_by_zip$ZIP_CODE)
+
+# 3. Merge sales data with census data
+sales_census_data <- left_join(census_data, average_sales_by_zip, by = "ZIP_CODE")
+
+# 4. Remove rows with missing sales data (only use the rows with both census and sales data)
+sales_census_data <- sales_census_data %>%
+  filter(!is.na(average_sale), 
+         !is.na(median_income), 
+         !is.na(percent_bachelors), 
+         !is.na(median_home_value))
+
+# 5. Train the model to identify factors correlated with higher sales
+model <- randomForest(average_sale ~ median_income + percent_bachelors + median_home_value,
+                      data = sales_census_data, importance = TRUE)
+
+# 6. Add predicted sales potential to the census data
+census_data$predicted_sales <- predict(model, newdata = census_data)
+
+# 7. Read ZIP shapefile for mapping (replace with your actual shapefile path)
+zip_shapes <- st_read("./cb_2020_us_zcta520_500k/cb_2020_us_zcta520_500k.shp")
+
+# Format ZIP codes to 5-digit strings in shapefile data
+zip_shapes$GEOID20 <- sprintf("%05s", zip_shapes$GEOID20)
+
+# **Check: Ensure the ZIP codes in both datasets match**
+# View unique ZIP codes in both sales data and shapefile
+unique_sales_zips <- unique(census_data$ZIP_CODE)
+unique_shapefile_zips <- unique(zip_shapes$GEOID20)
+
+# Print out counts for debugging:
+cat("Number of ZIP codes in sales/census data: ", length(unique_sales_zips), "\n")
+cat("Number of ZIP codes in shapefile: ", length(unique_shapefile_zips), "\n")
+
+# **Check for any missing ZIP codes in the join**
+zip_map_data <- zip_shapes %>%
+  left_join(census_data, by = c("GEOID20" = "ZIP_CODE"))
+
+# Print out the number of rows after the join to ensure it's correct
+cat("Number of rows in the merged dataset: ", nrow(zip_map_data), "\n")
+
+# **Check the first few rows to see the merge results**
+head(zip_map_data)
+
+# 8. Visualize the results with a continuous gradient using geom_sf (on a map)
+ggplot(zip_map_data) +
+  geom_sf(aes(fill = predicted_sales)) +
+  scale_fill_viridis_c(option = "inferno") +  # Optionally use "viridis" or "inferno" for color palette
+  theme_minimal() +
+  labs(title = "Predicted Sales Potential by ZIP Code", fill = "Predicted Sales Potential") +
+  theme(legend.position = "right")
+
+```
+
