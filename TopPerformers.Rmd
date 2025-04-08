@@ -111,7 +111,8 @@ head(Forest_data)
 
 ```{r}
 
-rf<- randomForest(PRODUCTION_TOTAL_RMR ~  OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + KIT_PREMIUM_PACKAGE + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY + top_salesperson, data=train, importance = TRUE)
+rf<- randomForest(PRODUCTION_TOTAL_RMR ~  OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY + 
+                    top_salesperson, data=train, importance = TRUE)
 
 
 
@@ -121,13 +122,32 @@ print(rf)
 
 ```{r}
 
-rf_importance <- rf$importance
+library(scales)
+
+
+rf_importance <- rf$importance 
+rf_importance[, "IncNodePurity"] <- rescale(rf_importance[, "IncNodePurity"], to = c(1, 20))
+
 
 importance_plot <- ggplot(data = as.data.frame(rf_importance),
                           aes(x = reorder(rownames(rf_importance), 
                                           IncNodePurity),  y = IncNodePurity)) + 
-  geom_bar(stat = "identity") + coord_flip() +
-  labs(title = "Figure 1: Feature Importance", x = "Feature", y = "Mean Decrease in Gini")
+  geom_bar(stat = "identity", fill = "#002454") + coord_flip() +
+  labs(title = "Figure 1: Feature Importance", x = "Feature", y = "Scaled Importance",
+       caption = "Variable importance when predicting RMR for any given sale" )+
+  scale_x_discrete(labels = c(
+    "OPPORTUNITY_TYPE" = "Opportunity Type",
+  "FINANCE_TYPE" = "Financing",
+  "TENURE" = "Tenure",
+  "PRODUCTION_COMMISSION_TYPE_CATEGORY" = "Commission",
+  "PRODUCTION_IS_SAME_DAY" = "Same Day",
+  "PRODUCTION_IS_CHARITY" = "Charity",
+  "top_salesperson" = "Top Salesperson")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none",
+        plot.caption = element_text(hjust = 0.5, face = "italic", size = 10))
+  
 
 print(importance_plot)
 
