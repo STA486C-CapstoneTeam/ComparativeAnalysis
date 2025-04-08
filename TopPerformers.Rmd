@@ -9,6 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 library( ggplot2 )
 library( dplyr )
+library(randomForest)
 ```
 
 ## Import Data
@@ -82,6 +83,62 @@ print(sales_summary)
 
 ```
 
+```{r}
+
+Forest_data <- sales_data
+
+
+# Turn chr vars into factor form
+Forest_data[, c("OPPORTUNITY_TYPE", "FINANCE_TYPE", 
+                     "TENURE", "PRODUCTION_COMMISSION_TYPE_CATEGORY", "EMPLOYEE_ID")] <- 
+  lapply(Forest_data[, c("OPPORTUNITY_TYPE", "FINANCE_TYPE", 
+                             "TENURE", "PRODUCTION_COMMISSION_TYPE_CATEGORY","EMPLOYEE_ID")], as.factor)
+
+# Set random seed for replication
+set.seed(123)
+
+# Define sample / split
+# Generate indices for the training set (80% of the data)
+train_index <- sample(seq_len(nrow(data.clean_noNA)), size = 0.8 * nrow(data.clean_noNA), replace = FALSE)
+
+# Subset the data into training and test sets
+train <- Forest_data[train_index, ]
+test  <- Forest_data[-train_index, ]
+
+head(Forest_data)
+```
+
+
+```{r}
+
+rf<- randomForest(PRODUCTION_TOTAL_RMR ~  OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + KIT_PREMIUM_PACKAGE + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY + top_salesperson, data=train, importance = TRUE)
+
+
+
+print(rf)
+
+```
+
+```{r}
+
+rf_importance <- rf$importance
+
+importance_plot <- ggplot(data = as.data.frame(rf_importance),
+                          aes(x = reorder(rownames(rf_importance), 
+                                          IncNodePurity),  y = IncNodePurity)) + 
+  geom_bar(stat = "identity") + coord_flip() +
+  labs(title = "Figure 1: Feature Importance", x = "Feature", y = "Mean Decrease in Gini")
+
+print(importance_plot)
+
+```
+
+
+
+
+
+
+
 
 ```{r}
 
@@ -109,3 +166,4 @@ ggplot(data=sales_summary, aes(x=total_sales, y=total_sale_amount, color=perform
   labs( title="Total Sales Revenue vs. Total Attempted Sales by Salesperson",
         x="Total Attempted Sales", y="Total Sales Revenue", color="Sales Performance")
 ```
+
