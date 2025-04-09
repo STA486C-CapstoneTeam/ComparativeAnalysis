@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library( ggplot2 )
 library( dplyr )
 library(randomForest)
+library(caret)
 ```
 
 ## Import Data
@@ -153,7 +154,30 @@ print(importance_plot)
 
 ```
 
+Cross Validate RF
 
+```{r}
+
+# Set up 10-fold cross-validation (you can change to 5 or any other number of folds)
+train_control <- trainControl(method = "cv", number = 5)
+
+# Fit the random forest model using cross-validation
+rf_cv <- train(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + 
+                  PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + 
+                  PRODUCTION_IS_CHARITY + top_salesperson, 
+               data = train, 
+               method = "rf",
+               trControl = train_control,
+               importance = TRUE)
+
+# Print the cross-validated random forest results
+print(rf_cv)
+
+# To inspect the importance of variables from the cross-validated model:
+print(rf_cv$finalModel$importance)
+
+
+```
 
 
 
