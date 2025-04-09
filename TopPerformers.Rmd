@@ -168,7 +168,7 @@ rf_cv <- train(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE +
                data = train, 
                method = "rf",
                trControl = train_control,
-               importance = TRUE)
+               importance = TRUE) 
 
 # Print the cross-validated random forest results
 print(rf_cv)
@@ -181,7 +181,50 @@ print(rf_cv$finalModel$importance)
 
 
 
+```{r}
 
+# Extract variable importance from the final model
+rfcv_importance <- rf_cv$finalModel$importance
+
+# Ensure it's a data frame and add rownames as a column
+rfcv_importance <- as.data.frame(rfcv_importance)
+rfcv_importance$Feature <- rownames(rfcv_importance)
+
+# Rescale IncNodePurity to [1, 20]
+rfcv_importance$IncNodePurity <- scales::rescale(rfcv_importance$IncNodePurity, to = c(1, 20))
+
+# Plot
+importance_plot_cv <- ggplot(data = rfcv_importance,
+                             aes(x = reorder(Feature, IncNodePurity), y = IncNodePurity)) +
+  geom_bar(stat = "identity", fill = "#002454") +
+  coord_flip() +
+  labs(
+    title = "Figure 1: Feature Importance cross validated",
+    x = "Feature",
+    y = "Scaled Importance",
+    caption = "Variable importance when predicting RMR for any given sale"
+  ) +
+  scale_x_discrete(labels = c(
+    "OPPORTUNITY_TYPE" = "Opportunity Type",
+    "FINANCE_TYPE" = "Financing",
+    "TENURE" = "Tenure",
+    "PRODUCTION_COMMISSION_TYPE_CATEGORY" = "Commission",
+    "PRODUCTION_IS_SAME_DAY" = "Same Day",
+    "PRODUCTION_IS_CHARITY" = "Charity",
+    "top_salesperson" = "Top Salesperson"
+  )) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.caption = element_text(hjust = 0.5, face = "italic", size = 10)
+  )
+
+# Print plot
+print(importance_plot_cv)
+
+
+```
 
 
 ```{r}
