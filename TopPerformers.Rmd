@@ -11,6 +11,7 @@ library( ggplot2 )
 library( dplyr )
 library(randomForest)
 library(caret)
+library(tidyr)
 ```
 
 ## Import Data
@@ -231,8 +232,13 @@ print(importance_plot_cv)
 # Credit Significance
 credit_lm <- lm(PRODUCTION_TOTAL_RMR~FINANCE_TYPE, data = sales_data)
 
-plot(credit_lm)
-
+ggplot(data = credit_lm, aes(x = FINANCE_TYPE, y = PRODUCTION_TOTAL_RMR)) +
+  geom_boxplot(fill = "#002454") +
+  labs(
+    title = "Sale Value by Credit type",
+    x = "Credit",
+    y = "PRMR"
+  )
 ```
 ```{r}
 
@@ -270,7 +276,8 @@ ggplot(data = avg_sales_by_tenure, aes(x = TENURE, y = avg_sales)) +
   )
 
 ggplot(data = TenSales, aes(x = TENURE, y = sales_count)) +
-  geom_boxplot(fill = "#002454") +
+  geom_boxplot(outlier.shape = NA, notch = TRUE, fill = "#002454") +
+  ylim(0,200) +
   labs(
     title = "Average Sales per Rep by Tenure",
     x = "Tenure",
@@ -281,7 +288,36 @@ ggplot(data = TenSales, aes(x = TENURE, y = sales_count)) +
 
 
 
+Facet
 
+```{r}
+
+# Select only the columns you want to pivot over (excluding OPPORTUNITY_TYPE and EMPLOYEE_ID)
+data_long <- sales_data %>%
+  select(-OPPORTUNITY_TYPE, -EMPLOYEE_ID) %>%
+  pivot_longer(
+    cols = -FINANCE_TYPE,   # Exclude FINANCE_TYPE from pivoting
+    names_to = "variable",
+    values_to = "value"
+  )
+
+# Now, create the faceted plot
+ggplot(data_long, aes(x = value, fill = FINANCE_TYPE)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ variable, scales = "free_x") +
+  labs(
+    title = "Finance Type Compared Across Key Variables",
+    x = "",
+    y = "Proportion",
+    fill = "Finance Type"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("#002454", "#FAC01A"))  # navy and gold
+
+
+
+
+```
 
 
 
