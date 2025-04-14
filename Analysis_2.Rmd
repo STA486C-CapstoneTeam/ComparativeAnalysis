@@ -176,7 +176,7 @@ gold <- "#FAC01A"
 # Generate a color scale using colorRampPalette
 navy_to_gold <- colorRampPalette(c(navy_blue, gold))
 
-# Get a specific number of colors from the scale (e.g., 5)
+
 color_palette <- navy_to_gold(3)
 
 # Use the color palette in a plot (example)

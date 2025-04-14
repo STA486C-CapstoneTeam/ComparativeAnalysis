@@ -84,6 +84,23 @@ print(sales_summary)
 
 
 ```
+Test Tenure 10% significance:
+
+```{r}
+
+
+tenure_table <- sales_summary %>%
+  select(top_salesperson, TENURE, count) %>%
+  pivot_wider(names_from = top_salesperson, values_from = count) %>%
+  column_to_rownames("TENURE") %>%
+  as.matrix()
+
+chisq.test(tenure_table)
+
+chisq.test(tenure_table)$expected
+```
+
+
 
 ```{r}
 
@@ -288,20 +305,21 @@ ggplot(data = TenSales, aes(x = TENURE, y = sales_count)) +
 
 
 
-Facet
+Facet ( Help Here ? )
 
 ```{r}
 
-# Select only the columns you want to pivot over (excluding OPPORTUNITY_TYPE and EMPLOYEE_ID)
+
 data_long <- sales_data %>%
-  select(-OPPORTUNITY_TYPE, -EMPLOYEE_ID) %>%
+  select(factor(sales_data$OPPORTUNITY_TYPE), factor(sales_data$EMPLOYEE_ID), 
+         factor(sales_data$TENURE), ) %>%
   pivot_longer(
-    cols = -FINANCE_TYPE,   # Exclude FINANCE_TYPE from pivoting
+    cols = -FINANCE_TYPE,   
     names_to = "variable",
     values_to = "value"
   )
 
-# Now, create the faceted plot
+
 ggplot(data_long, aes(x = value, fill = FINANCE_TYPE)) +
   geom_bar(position = "fill") +
   facet_wrap(~ variable, scales = "free_x") +
@@ -312,7 +330,7 @@ ggplot(data_long, aes(x = value, fill = FINANCE_TYPE)) +
     fill = "Finance Type"
   ) +
   theme_minimal() +
-  scale_fill_manual(values = c("#002454", "#FAC01A"))  # navy and gold
+  scale_fill_manual(values = c("#002454", "#FAC01A"))  
 
 
 
