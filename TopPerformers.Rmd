@@ -226,6 +226,65 @@ print(importance_plot_cv)
 
 ```
 
+```{r}
+
+# Credit Significance
+credit_lm <- lm(PRODUCTION_TOTAL_RMR~FINANCE_TYPE, data = sales_data)
+
+plot(credit_lm)
+
+```
+```{r}
+
+# Find average number of sales per tenure.
+avg_sales_by_tenure <- sales_data %>%
+  group_by(TENURE, EMPLOYEE_ID) %>%               
+  summarise(sales_count = n(), .groups = "drop") %>%  
+  group_by(TENURE) %>%                       
+  summarise(avg_sales = mean(sales_count))   
+
+avg_sales_by_tenure
+
+
+```
+
+Significance
+```{r}
+
+tenureNova <- sales_data %>%
+  group_by(TENURE, EMPLOYEE_ID) %>%
+  summarise(sales_count = n(), .groups = "drop")
+
+
+TenSales <- lm(sales_count ~ TENURE, data = tenureNova)
+
+
+anova(TenSales)
+
+ggplot(data = avg_sales_by_tenure, aes(x = TENURE, y = avg_sales)) +
+  geom_col(fill = "#002454") +
+  labs(
+    title = "Average Sales per Rep by Tenure",
+    x = "Tenure",
+    y = "Average Sales"
+  )
+
+ggplot(data = TenSales, aes(x = TENURE, y = sales_count)) +
+  geom_boxplot(fill = "#002454") +
+  labs(
+    title = "Average Sales per Rep by Tenure",
+    x = "Tenure",
+    y = "Number of Sales"
+  )
+
+```
+
+
+
+
+
+
+
 
 ```{r}
 
