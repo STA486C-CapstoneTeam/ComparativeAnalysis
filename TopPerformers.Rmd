@@ -95,9 +95,19 @@ tenure_table <- sales_summary %>%
   column_to_rownames("TENURE") %>%
   as.matrix()
 
-chisq.test(tenure_table)
+chi_result <- chisq.test(tenure_table)
 
-chisq.test(tenure_table)$expected
+chi_summary <- data.frame(
+  Test = "Chi-Square Test of Independence",
+  Comparison = "Tenure vs. Top 10%",
+  Chi_Square = round(chi_result$statistic, 2),
+  DF = chi_result$parameter,
+  p_value = signif(chi_result$p.value, 3),
+  Significant = ifelse(chi_result$p.value < 0.05, "Yes", "No")
+)
+
+# View the result
+print(chi_summary)
 ```
 
 
@@ -130,8 +140,8 @@ head(Forest_data)
 
 ```{r}
 
-rf<- randomForest(PRODUCTION_TOTAL_RMR ~  OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY + 
-                    top_salesperson, data=train, importance = TRUE)
+rf<- randomForest(PRODUCTION_TOTAL_RMR ~  OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY
+                  + PRODUCTION_IS_CHARITY, data=train, importance = TRUE)
 
 
 
@@ -160,8 +170,7 @@ importance_plot <- ggplot(data = as.data.frame(rf_importance),
   "TENURE" = "Tenure",
   "PRODUCTION_COMMISSION_TYPE_CATEGORY" = "Commission",
   "PRODUCTION_IS_SAME_DAY" = "Same Day",
-  "PRODUCTION_IS_CHARITY" = "Charity",
-  "top_salesperson" = "Top Salesperson")) +
+  "PRODUCTION_IS_CHARITY" = "Charity")) +
   scale_y_continuous(labels = scales::comma) +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none",
@@ -171,6 +180,77 @@ importance_plot <- ggplot(data = as.data.frame(rf_importance),
 print(importance_plot)
 
 ```
+
+# Comparative Models:
+
+```{r}
+
+#Null Model
+Null <- lm(PRODUCTION_TOTAL_RMR~1, data = sales_data)
+summary(Null)
+
+#Full Model
+Full <- lm(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE +
+             PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY +
+             PRODUCTION_IS_CHARITY, data=sales_data)
+summary(Full)
+
+# Backward
+
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  Back <- step( Full, 
+                     direction = "backward", 
+                     trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( Back )
+
+# Forward
+
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  Forward <- step( Null, 
+                     direction = "forward", 
+                     trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( Forward )
+
+# Step
+
+suppressWarnings(
+
+  # Implement bidirectional step wise model
+  Step <- step( Full, 
+                     direction = "both", 
+                     trace = 0 )         # Turn off output
+
+)
+
+# Output the summary of the model
+summary( Step )
+
+```
+```{r}
+
+anova(Null)
+anova(Full)
+anova(Back)
+anova(Forward)
+anova(Step)
+
+```
+
+
+
+
 
 Cross Validate RF
 

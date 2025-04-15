@@ -15,6 +15,7 @@ library( glmnet )
 library( tidyverse )
 library( mgcv )
 library(randomForest)
+library(scales)
 
 ```
 
@@ -169,6 +170,80 @@ Tenure.Finance  # Display the plot
 
 ```
 ```{r}
+
+# Order Tenure
+data.clean_noNA$TENURE <- factor(data.clean_noNA$TENURE, levels = c("Veteran", "Sophomore", "Rookie"))
+
+# Step 1: Summarize count per FINANCE_TYPE and TENURE
+proportion_data <- data.clean_noNA %>%
+  group_by(FINANCE_TYPE, TENURE) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(FINANCE_TYPE) %>%
+  mutate(proportion = count / sum(count))
+
+# Step 2: Plot the proportions
+Tenure.Finance <- ggplot(proportion_data, aes(x = FINANCE_TYPE, y = proportion, fill = TENURE)) +
+  geom_col(position = "fill") +
+  
+  scale_fill_manual(values = color_palette) +
+  labs(title = "Tenure Composition by Finance Type",
+       y = "Proportion of Sales",
+       x = "Finance Type",
+       fill = "Tenure") +
+  theme_minimal()
+
+# Step 3: Show the plot
+Tenure.Finance
+```
+
+```{r}
+
+# Reorder TENURE
+data.clean_noNA$TENURE <- factor(data.clean_noNA$TENURE, levels = c("Rookie", "Sophomore", "Veteran"))
+
+# Step 1: Summarize proportion of finance types *within each TENURE*
+finance_by_tenure <- data.clean_noNA %>%
+  group_by(TENURE, FINANCE_TYPE) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  group_by(TENURE) %>%
+  mutate(proportion = count / sum(count))
+
+# Step 2: Plot with facets
+ggplot(finance_by_tenure, aes(x = FINANCE_TYPE, y = proportion, fill = FINANCE_TYPE)) +
+  geom_col() +
+  geom_text(aes(label = percent(proportion, accuracy = 1)),
+            vjust = -0.5, size = 3.5) +
+  facet_wrap(~ TENURE) +
+  scale_y_continuous(labels = percent_format(accuracy = 1)) +
+  scale_fill_manual(values = navy_to_gold(length(unique(finance_by_tenure$FINANCE_TYPE)))) +
+  labs(title = "Finance Type Distribution Within Each Tenure Group",
+       x = "Finance Type",
+       y = "Proportion",
+       fill = "Finance Type") +
+  theme_minimal()
+
+```
+# Proportions
+```{r}
+
+# Create a contingency table of counts
+tenure_finance_table <- table(data.clean_noNA$TENURE, data.clean_noNA$FINANCE_TYPE)
+
+# View the table (optional)
+print(tenure_finance_table)
+
+# Run Chi-Square Test of Independence
+chisq_result <- chisq.test(tenure_finance_table)
+
+# View test result
+chisq_result
+
+chisq_result$expected
+
+```
+
+
+```{r}
 # Define navy blue and gold colors
 navy_blue <- "#002454"
 gold <- "#FAC01A"
@@ -184,10 +259,10 @@ plot(1:3, col = color_palette, pch = 16)
 
 
 
-Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = OPPORTUNITY_TYPE, y = PRODUCTION_TOTAL_RMR, fill=TENURE)) +  
+Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = FINANCE_TYPE, y = PRODUCTION_TOTAL_RMR, fill=TENURE)) +  
   geom_bar(stat = "identity", position='fill', fun='mean') + 
   scale_fill_manual(values = color_palette) +
-  labs(title = "Tenure vs Opportunity Type", y = "Proportion of Sale Type")
+  labs(title = "Tenure vs Opportunity Type", y = "Proportion of Tenure")
 Tenure.Finance  # Display the plot
 ```
 ```{r}
@@ -200,7 +275,17 @@ Tenure.Finance  # Display the plot
 ```{r}
 ggpie(data=data.clean_noNA, group_key="OPPORTUNITY_TYPE", count_type = "full")
 ```
+# Tenure vs Financing
 
+```{r}
+
+
+
+
+
+
+
+```
 
 
 ```{r}
