@@ -13,6 +13,7 @@ library(randomForest)
 library(caret)
 library(tidyr)
 library(MASS)
+library(tidyverse)
 ```
 
 ## Import Data
@@ -328,14 +329,88 @@ summary(cv_results)
 ```{r}
 
 # Analyze
-bwplot(cv_results, metric = "RMSE") 
 bwplot(cv_results, metric = "MAE") 
 bwplot(cv_results, metric = "Rsquared") 
+bwplot(cv_results, metric = "RMSE") 
 
-
+bwplot(cv_results, metric = "MAE",
+       par.settings = list(box.rectangle = list(col = "#002454"),   # Box outline
+                           box.umbrella = list(col = "#FAC01A"),    # Whiskers
+                           plot.symbol = list(col = "black", pch = 16),  # Outliers
+                           box.fill = list(col = "green")))       # Box fill
 
 ```
 
+
+
+```{r}
+
+mae_data <- tribble(
+  ~Model,        ~Min,   ~Q1,     ~Median, ~Q3,     ~Max,
+  "Full",        17.54,  17.56,   17.58,   17.59,   17.73,
+  "Backward",    17.49,  17.51,   17.64,   17.64,   17.72,
+  "Stepwise",    17.46,  17.61,   17.62,   17.64,   17.67,
+  "RandomForest",17.20,  17.30,   17.38,   17.39,   17.47
+)
+
+# Expand into rows to simulate boxplot data (we'll just repeat each value 5 times to visualize)
+mae_long <- mae_data %>%
+  rowwise() %>%
+  mutate(
+    Values = list(c(Min, Q1, Median, Q3, Max))
+  ) %>%
+  unnest(cols = c(Values))
+
+# View the long-form data
+head(mae_long)
+
+ggplot(mae_long, aes(x = Model, y = Values, fill = Model)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("Full" = "#002454", 
+                              "Backward" = "#FAC01A", 
+                              "Stepwise" = "#002454", 
+                              "RandomForest" = "#FAC01A")) +
+  labs(title = "MAE Boxplot for Models",
+       y = "MAE",
+       x = "Model") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none")
+
+```
+
+```{r}
+
+# Extract MAE values from the resamples object
+mae_df <- cv_results$values %>%
+  select(contains("MAE")) %>%
+  pivot_longer(
+    cols = everything(),
+    names_to = "Model",
+    values_to = "MAE"
+  ) %>%
+  mutate(Model = gsub("~MAE", "", Model))  # Clean up model names
+
+# Plot using ggplot2
+ggplot(mae_df, aes(x = Model, y = MAE, fill = Model)) +
+  geom_boxplot(color = "#002454", alpha = 0.8) +
+  scale_fill_manual(values = c(
+    "Null" = "#CAD5E2",
+    "Full" = "#FAC01A",
+    "Forward" = "#FFE89C",
+    "Backward" = "#FFD24C",
+    "Stepwise" = "#FAC01A",
+    "RandomForest" = "#002454"
+  )) +
+  labs(
+    title = "Cross-Validated MAE by Model",
+    x = "Model",
+    y = "Mean Absolute Error"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none")
+
+
+```
 
 
 ```{r}
