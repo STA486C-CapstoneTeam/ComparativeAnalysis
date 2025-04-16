@@ -1,0 +1,218 @@
+---
+title: "proptest"
+author: "Richard McCormick"
+date: '2025-03-05'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(plyr)
+```
+
+```{r cars}
+data <- read.csv("data_clean_withNA.csv")
+
+# Flag top 10% of salespeople based on PRODUCTION_TOTAL_RMR
+threshold <- quantile(data$PRODUCTION_TOTAL_RMR, 0.90, na.rm = TRUE)
+data.clean_noNA <- data %>%
+  mutate(TOP_10_PERCENT = PRODUCTION_TOTAL_RMR >= threshold)
+
+print(data.clean_noNA)
+```
+```{r}
+table(data.clean_noNA$TENURE, data.clean_noNA$TOP_10_PERCENT)
+```
+
+```{r}
+# Rookie / Sophomore
+prop.test(c(3981, 3068), c(40622,25048), p = NULL, alternative = "two.sided", correct = TRUE)
+
+# Input values
+x1 <- 3981
+n1 <- 40622
+x2 <- 3068
+n2 <- 25048
+
+# Sample proportions
+p1 <- x1 / n1
+p2 <- x2 / n2
+
+# Pooled proportion
+p_pooled <- (x1 + x2) / (n1 + n2)
+
+# Standard error
+se <- sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2))
+
+# z-statistic
+z <- (p1 - p2) / se
+
+# Two-tailed p-value
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+# Print results
+cat("Z-statistic:", z, "\n")
+cat("P-value:", p_value, "\n")
+
+
+```
+
+```{r}
+# Sophomore / Veteran
+prop.test(c(3068, 5314), c(25048  ,45506  ), p = NULL, alternative = "two.sided", correct = TRUE)
+
+# Input values
+x1 <- 3068
+n1 <- 25048  
+x2 <- 5314
+n2 <- 45506  
+
+# Sample proportions
+p1 <- x1 / n1
+p2 <- x2 / n2
+
+# Pooled proportion
+p_pooled <- (x1 + x2) / (n1 + n2)
+
+# Standard error
+se <- sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2))
+
+# z-statistic
+z <- (p1 - p2) / se
+
+# Two-tailed p-value
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+# Print results
+cat("Z-statistic:", z, "\n")
+cat("P-value:", p_value, "\n")
+
+
+```
+
+```{r}
+# Rookie / Veteran
+prop.test(c(3981, 5314), c(25048  ,45506  ), p = NULL, alternative = "two.sided", correct = TRUE)
+
+# Input values
+x1 <- 3981
+n1 <- 40622  
+x2 <- 5314
+n2 <- 45506  
+
+# Sample proportions
+p1 <- x1 / n1
+p2 <- x2 / n2
+
+# Pooled proportion
+p_pooled <- (x1 + x2) / (n1 + n2)
+
+# Standard error
+se <- sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2))
+
+# z-statistic
+z <- (p1 - p2) / se
+
+# Two-tailed p-value
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+# Print results
+cat("Z-statistic:", z, "\n")
+cat("P-value:", p_value, "\n")
+
+
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(gt)  # or use knitr::kable if you prefer
+df_summary <- data.clean_noNA %>%
+  na.omit(data.clean_noNA) %>%
+  group_by(across(all_of(c("TENURE", "TOP_10_PERCENT")))) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  mutate(proportion = n / sum(n)) %>%
+  arrange(desc(n))
+
+df_summary
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(scales)
+library(gt)
+
+# Your data with provided proportions
+top10_summary <- tibble::tribble(
+  ~TENURE,       ~TOP_10_PERCENT, ~n, ~proportion,
+  "Veteran",     FALSE,           44332, 0.36858559,
+  "Rookie",      FALSE,           39564, 0.32894343,
+  "Sophomore",   FALSE,           24329, 0.20227643,
+  "Veteran",     TRUE,            5183,  0.04309255,
+  "Rookie",      TRUE,            3863,  0.03211780,
+  "Sophomore",   TRUE,            3005,  0.02498420
+) %>%
+  pivot_wider(
+    names_from = TOP_10_PERCENT,
+    values_from = c(n, proportion),
+    names_glue = "{TOP_10_PERCENT}_{.value}"
+  ) %>%
+  mutate(
+    Total_Salespeople = `FALSE_n` + `TRUE_n`,  # Sum the FALSE and TRUE counts to get the total
+    Top_10_Count = `TRUE_n`,  # True counts are the top 10%
+    
+    # Using the provided proportion directly
+    Top_10_Proportion = `TRUE_proportion`,
+    
+    # Format the proportion as a percentage
+    Top_10_Label = percent(Top_10_Proportion, accuracy = 0.1)
+  ) %>%
+  select(TENURE, Total_Salespeople, Top_10_Count, Top_10_Label)
+
+# View the cleaned table
+top10_summary
+
+
+
+```
+
+```{r}
+library(gt)
+
+top10_summary %>%
+  gt() %>%
+  tab_header(
+    title = md("**Top 10% Salespeople by Tenure**"),
+    subtitle = "Count and Proportion of High Performers by Tenure"
+  ) %>%
+  cols_label(
+    TENURE = "Tenure",
+    Total_Salespeople = "Total",
+    Top_10_Count = "Top 10% Count",
+    Top_10_Label = "Top 10% Proportion"
+  ) %>%
+  tab_options(
+    table.font.size = "small",
+    heading.title.font.size = 14,
+    heading.subtitle.font.size = 12
+  ) %>%
+  tab_style(
+    style = cell_text(color = "#002454"),
+    locations = list(
+      cells_body(),
+      cells_column_labels()
+    )
+  ) %>%
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_title()
+  )# %>%
+  #tab_footnote(
+  #  footnote = "*, *** indicate statistically significant differences in proportions (p < 0.05, p < 0.001).",
+  #  locations = cells_column_labels(columns = Top_10_Label)
+  #)
+
+```
+
