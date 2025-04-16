@@ -28,17 +28,153 @@ ddply(data, .(TENURE), summarise, X2=sum(CLOSED_SALE))
 
 ```{r}
 # Rookie / Sophomore
-prop.test(c(44603, 28116), c(164528,82599), p = NULL, alternative = "two.sided", correct = TRUE)
+prop.test(c(44603, 28116, 50820), c(164528,82599,118611), p = NULL, alternative = "two.sided", correct = TRUE)
+
+# Input values
+x1 <- 44603
+n1 <- 164528
+x2 <- 28116
+n2 <- 82599
+
+# Sample proportions
+p1 <- x1 / n1
+p2 <- x2 / n2
+
+# Pooled proportion
+p_pooled <- (x1 + x2) / (n1 + n2)
+
+# Standard error
+se <- sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2))
+
+# z-statistic
+z <- (p1 - p2) / se
+
+# Two-tailed p-value
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+# Print results
+cat("Z-statistic:", z, "\n")
+cat("P-value:", p_value, "\n")
+
 
 ```
 
 ```{r}
 # Sophomore / Veteran
 prop.test(c(28116, 50820), c(82599,118611), p = NULL, alternative = "two.sided", correct = TRUE)
+
+# Input values
+x1 <- 28116
+n1 <- 82599
+x2 <- 50820
+n2 <- 118611
+
+# Sample proportions
+p1 <- x1 / n1
+p2 <- x2 / n2
+
+# Pooled proportion
+p_pooled <- (x1 + x2) / (n1 + n2)
+
+# Standard error
+se <- sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2))
+
+# z-statistic
+z <- (p1 - p2) / se
+
+# Two-tailed p-value
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+# Print results
+cat("Z-statistic:", z, "\n")
+cat("P-value:", p_value, "\n")
 ```
 
 ```{r}
 # Rookie / Veteran
 prop.test(c(44603, 50820), c(164528,118611), p = NULL, alternative = "two.sided", correct = TRUE)
+
+# Input values
+x1 <- 44603
+n1 <- 164528
+x2 <- 50820
+n2 <- 118611
+
+# Sample proportions
+p1 <- x1 / n1
+p2 <- x2 / n2
+
+# Pooled proportion
+p_pooled <- (x1 + x2) / (n1 + n2)
+
+# Standard error
+se <- sqrt(p_pooled * (1 - p_pooled) * (1/n1 + 1/n2))
+
+# z-statistic
+z <- (p1 - p2) / se
+
+# Two-tailed p-value
+p_value <- 2 * (1 - pnorm(abs(z)))
+
+# Print results
+cat("Z-statistic:", z, "\n")
+cat("P-value:", p_value, "\n")
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Create a data frame with the results
+prop_data <- data.frame(
+  Comparison = c("Rookie vs Sophomore", "Sophomore vs Veteran", "Rookie vs Veteran"),
+  Prop1 = c(0.2711, 0.3404, 0.2711),
+  Prop2 = c(0.3404, 0.4285, 0.4285),
+  P_value = c(0, 0, 0)  # All are highly significant
+)
+
+# Calculate the difference in proportions
+prop_data <- prop_data %>%
+  mutate(
+    Difference = Prop2 - Prop1,
+    Significance = case_when(
+      P_value < 0.001 ~ "***",
+      P_value < 0.01 ~ "**",
+      P_value < 0.05 ~ "*",
+      TRUE ~ "ns"
+    )
+  )
+
+# Reorder by difference
+prop_data$Comparison <- factor(prop_data$Comparison, levels = prop_data$Comparison[order(prop_data$Difference)])
+
+# Define custom colors
+custom_colors <- c("#002454", "#7687A1", "#FAC01A")
+navy <- "#002454"
+
+# Plot
+ggplot(prop_data, aes(x = Comparison, y = Difference, fill = Comparison)) +
+  geom_bar(stat = "identity", width = 0.6) +
+  geom_text(aes(label = Significance), vjust = -0.5, size = 6, color = navy) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray") +
+  labs(
+    title = "Difference in Proportion of Closed Sales by Experience Level",
+    subtitle = "Significance: *** p < 0.001",
+    x = "Experience Level Comparison",
+    y = "Proportion Difference"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(color = navy),
+    plot.subtitle = element_text(color = navy),
+    axis.title.x = element_text(color = navy),
+    axis.title.y = element_text(color = navy),
+    axis.text = element_text(color = navy)
+  ) +
+  scale_fill_manual(values = custom_colors) +
+  ylim(0, max(prop_data$Difference) + 0.02)
+
 ```
 
