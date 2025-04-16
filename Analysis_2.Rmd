@@ -182,13 +182,13 @@ proportion_data <- data.clean_noNA %>%
   mutate(proportion = count / sum(count))
 
 # Step 2: Plot the proportions
-Tenure.Finance <- ggplot(proportion_data, aes(x = FINANCE_TYPE, y = proportion, fill = TENURE)) +
+Tenure.Finance <- ggplot(proportion_data, aes(x = OPPORTUNITY_TYPE, y = proportion, fill = TENURE)) +
   geom_col(position = "fill") +
   
   scale_fill_manual(values = color_palette) +
   labs(title = "Tenure Composition by Finance Type",
        y = "Proportion of Sales",
-       x = "Finance Type",
+       x = "Opportunity Type",
        fill = "Tenure") +
   theme_minimal()
 
@@ -259,10 +259,11 @@ plot(1:3, col = color_palette, pch = 16)
 
 
 
-Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = FINANCE_TYPE, y = PRODUCTION_TOTAL_RMR, fill=TENURE)) +  
-  geom_bar(stat = "identity", position='fill', fun='mean') + 
+Tenure.Finance <- ggplot(data = data.clean_noNA, aes(x = OPPORTUNITY_TYPE, y = PRODUCTION_TOTAL_RMR, fill=TENURE)) +  
+  geom_bar(stat = "identity", position='fill') + 
   scale_fill_manual(values = color_palette) +
-  labs(title = "Tenure vs Opportunity Type", y = "Proportion of Tenure")
+  labs(title = "Figure 4", y = "Proportion of Tenure") +
+  theme(plot.title = element_text(hjust = 0.5))
 Tenure.Finance  # Display the plot
 ```
 ```{r}

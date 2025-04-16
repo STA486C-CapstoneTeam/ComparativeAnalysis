@@ -370,11 +370,11 @@ ggplot(mae_long, aes(x = Model, y = Values, fill = Model)) +
                               "Backward" = "#FAC01A", 
                               "Stepwise" = "#002454", 
                               "RandomForest" = "#FAC01A")) +
-  labs(title = "MAE Boxplot for Models",
+  labs(title = "Figure 7",
        y = "MAE",
        x = "Model") +
   theme_minimal(base_size = 14) +
-  theme(legend.position = "none")
+  theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
 
 ```
 
@@ -510,10 +510,11 @@ ggplot(data = TenSales, aes(x = TENURE, y = sales_count)) +
   geom_boxplot(outlier.shape = NA, notch = TRUE, fill = "#002454") +
   ylim(0,200) +
   labs(
-    title = "Average Sales per Rep by Tenure",
+    title = "Figure 3",
     x = "Tenure",
     y = "Number of Sales"
-  )
+  ) +
+  theme(plot.title = element_text(hjust = 0.5))
 
 ```
 
@@ -550,6 +551,91 @@ ggplot(data_long, aes(x = value, fill = FINANCE_TYPE)) +
 
 
 ```
+
+# Display Stepwise Model
+```{r}
+
+FINAL_MODEL <- stepwise_cv$finalModel
+
+
+cv_importance <- FINAL_MODEL$importance 
+cv_importance[, "IncNodePurity"] <- rescale(cv_importance[, "IncNodePurity"], to = c(1, 20))
+
+
+Final_importance_plot <- ggplot(data = as.data.frame(cv_importance),
+                          aes(x = reorder(rownames(cv_importance), 
+                                          IncNodePurity),  y = IncNodePurity)) + 
+  geom_bar(stat = "identity", fill = "#002454") + coord_flip() +
+  labs(title = "Figure 6: Feature Importance", x = "Feature", y = "Scaled Importance",
+       caption = "Variable importance when predicting RMR for any given sale" )+
+  scale_x_discrete(labels = c(
+    "OPPORTUNITY_TYPE" = "Opportunity Type",
+  "FINANCE_TYPE" = "Financing",
+  "TENURE" = "Tenure",
+  "PRODUCTION_COMMISSION_TYPE_CATEGORY" = "Commission",
+  "PRODUCTION_IS_SAME_DAY" = "Same Day",
+  "PRODUCTION_IS_CHARITY" = "Charity")) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "none",
+        plot.caption = element_text(hjust = 0.5, face = "italic", size = 10))
+  
+
+print(Final_importance_plot)
+
+
+```
+# attempt 2
+```{r}
+
+library(broom)
+library(ggplot2)
+library(dplyr)
+
+
+
+coef_df <- tidy(FINAL_MODEL) %>%
+  filter(term != "(Intercept)") %>%
+  mutate(term = reorder(term, estimate))
+
+# Define friendly names for left-hand side labels
+friendly_labels <- c(
+  "OPPORTUNITY_TYPERenewal" = "Opportunity: Renewal",
+  "OPPORTUNITY_TYPEUpgrade" = "Opportunity: Upgrade",
+  "`FINANCE_TYPEFortiva 0%`" = "Finance: Fortiva 0%",
+  "`FINANCE_TYPEFortiva 9.99%`" = "Finance: Fortiva 9.99%",
+  "`FINANCE_TYPENo Offer`" = "Finance: No Offer",
+  "`FINANCE_TYPEThird Look`" = "Finance: Third Look",
+  "TENURESophomore" = "Tenure: Sophomore",
+  "TENUREVeteran" = "Tenure: Veteran",
+  "`PRODUCTION_COMMISSION_TYPE_CATEGORYFULL COMMISSION`" = "Commission: Full",
+  "PRODUCTION_COMMISSION_TYPE_CATEGORYOTHER" = "Commission: Other",
+  "`PRODUCTION_COMMISSION_TYPE_CATEGORYPIF - $15 PRMR ADDER`" = "Commission: $15 PRMR Adder",
+  "`PRODUCTION_COMMISSION_TYPE_CATEGORYPIF FAIL`" = "Commission: PIF Fail",
+  "PRODUCTION_COMMISSION_TYPE_CATEGORYUPGRADE" = "Commission: Upgrade",
+  "PRODUCTION_IS_SAME_DAY" = "Same-Day"
+)
+
+# Plot
+ggplot(coef_df, aes(x = estimate, y = term)) +
+  geom_point(color = "#002454", size = 3) +
+  geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error),
+                 height = 0.2, color = "#FAC01A") +
+  scale_y_discrete(labels = friendly_labels) +  # use friendly labels
+  labs(
+    title = "Figure 8",
+    x = "Estimated Change in PRMR",
+    y = NULL
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.y = element_text(hjust = 0),
+    plot.title = element_text(hjust = 0.5, face = "bold")
+  )
+
+
+```
+
 
 
 
