@@ -465,7 +465,7 @@ credit_lm <- lm(PRODUCTION_TOTAL_RMR~FINANCE_TYPE, data = sales_data)
 
 ggplot(data = sales_data, aes(x = FINANCE_TYPE, y = PRODUCTION_TOTAL_RMR)) +
   ylim(0, 160)+
-  geom_boxplot(fill = "#7687A1", outlier.shape = NA) +
+  geom_boxplot(fill = "#FAC01A", outlier.shape = NA) +
   labs(
     x = "Credit",
     y = "PRMR"
@@ -642,7 +642,28 @@ ggplot(coef_df, aes(x = estimate, y = term)) +
 
 ```
 
+# Sales count by Finance Type
 
+```{r}
+
+Finance_sum <- sales_data %>%
+  group_by(FINANCE_TYPE) %>%
+  summarise(Total_Sales = n())
+
+Finance_total <- ggplot(data = Finance_sum, aes(x = FINANCE_TYPE, y = Total_Sales)) +
+  geom_bar(stat = "identity", fill = "#002454") +
+  labs( x = "Finance Type", y = "Total Sales") +
+  theme_classic() +
+  theme(
+    plot.margin = unit(c(1,1,1,1), "cm")
+  )
+
+Finance_total
+
+ggsave('CreditTotal.png', plot = last_plot(),
+       path="/Users/tharris/Desktop", dpi =1200)
+
+```
 
 
 
