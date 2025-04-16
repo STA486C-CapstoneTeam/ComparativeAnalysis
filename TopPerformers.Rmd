@@ -12,6 +12,7 @@ library( dplyr )
 library(randomForest)
 library(caret)
 library(tidyr)
+library(MASS)
 ```
 
 ## Import Data
@@ -256,13 +257,13 @@ Cross Validate RF
 
 ```{r}
 
-# Set up 10-fold cross-validation (you can change to 5 or any other number of folds)
+# 5 Fold cv
 train_control <- trainControl(method = "cv", number = 5)
 
 # Fit the random forest model using cross-validation
 rf_cv <- train(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + 
                   PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + 
-                  PRODUCTION_IS_CHARITY + top_salesperson, 
+                  PRODUCTION_IS_CHARITY, 
                data = train, 
                method = "rf",
                trControl = train_control,
@@ -273,6 +274,64 @@ print(rf_cv)
 
 # To inspect the importance of variables from the cross-validated model:
 print(rf_cv$finalModel$importance)
+
+
+```
+
+
+# Cross Validation Between Models
+```{r}
+
+# Set up consistent CV control
+ctrl <- trainControl(method = "cv", number = 5)
+
+# Train Models
+full_cv <- train(PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + 
+                   PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY,
+                 data = train, method = "lm", trControl = ctrl)
+# stepwise models:
+backward_cv <- train(formula(Back), data = train, method = "lm", trControl = ctrl)
+stepwise_cv <- train(formula(Step), data = train, method = "lm", trControl = ctrl)
+
+# Wrap RF
+rf_cv <- train(
+  PRODUCTION_TOTAL_RMR ~ OPPORTUNITY_TYPE + FINANCE_TYPE + TENURE + 
+    PRODUCTION_COMMISSION_TYPE_CATEGORY + PRODUCTION_IS_SAME_DAY + PRODUCTION_IS_CHARITY,
+  data = train,
+  method = "rf",
+  trControl = ctrl,
+  importance = TRUE,
+  tuneLength = 3
+)
+
+```
+
+```{r}
+
+# Create a list of all models
+model_list <- list(
+  Full = full_cv,
+  Backward = backward_cv,
+  Stepwise = stepwise_cv,
+  RandomForest = rf_cv
+)
+
+# Compare using caret’s resamples
+cv_results <- resamples(model_list)
+
+# Summary table of performance (RMSE, Rsquared, MAE)
+summary(cv_results)
+
+
+```
+
+```{r}
+
+# Analyze
+bwplot(cv_results, metric = "RMSE") 
+bwplot(cv_results, metric = "MAE") 
+bwplot(cv_results, metric = "Rsquared") 
+
 
 
 ```
