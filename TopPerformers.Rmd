@@ -349,7 +349,7 @@ mae_data <- tribble(
   ~Model,        ~Min,   ~Q1,     ~Median, ~Q3,     ~Max,
   "Full",        17.54,  17.56,   17.58,   17.59,   17.73,
   "Backward",    17.49,  17.51,   17.64,   17.64,   17.72,
-  "Stepwise",    17.46,  17.61,   17.62,   17.64,   17.67,
+  "Hybrid",    17.46,  17.61,   17.62,   17.64,   17.67,
   "RandomForest",17.20,  17.30,   17.38,   17.39,   17.47
 )
 
@@ -361,20 +361,25 @@ mae_long <- mae_data %>%
   ) %>%
   unnest(cols = c(Values))
 
-# View the long-form data
-head(mae_long)
+
+mae_long$Model <- factor(mae_long$Model, levels = c("RandomForest", "Full", "Hybrid", "Backward"))
 
 ggplot(mae_long, aes(x = Model, y = Values, fill = Model)) +
   geom_boxplot() +
   scale_fill_manual(values = c("Full" = "#002454", 
-                              "Backward" = "#FAC01A", 
-                              "Stepwise" = "#002454", 
+                              "Backward" = "#002454", 
+                              "Hybrid" = "#FAC01A", 
                               "RandomForest" = "#FAC01A")) +
   labs(title = "Figure 7",
        y = "MAE",
        x = "Model") +
   theme_minimal(base_size = 14) +
   theme(legend.position = "none", plot.title = element_text(hjust = 0.5))
+
+
+
+ggsave('ModelMAE.png', plot = last_plot(),
+       path="/Users/tharris/Desktop", dpi =1200)
 
 ```
 
@@ -464,14 +469,16 @@ print(importance_plot_cv)
 credit_lm <- lm(PRODUCTION_TOTAL_RMR~FINANCE_TYPE, data = sales_data)
 
 ggplot(data = sales_data, aes(x = FINANCE_TYPE, y = PRODUCTION_TOTAL_RMR)) +
-  ylim(0, 160)+
+  coord_cartesian(ylim = c(0, 160)) +
   geom_boxplot(fill = "#FAC01A", outlier.shape = NA) +
   labs(
+    title = "Figure 5",
     x = "Credit",
     y = "PRMR"
   ) +
   theme(
-    plot.margin = unit(c(1,1,1,1), "cm")
+    plot.margin = unit(c(1,1,1,1), "cm"),
+    plot.title = element_text(hjust = 0.5)
   )
 
 ggsave('CreditPRMR.png', plot = last_plot(),
@@ -624,9 +631,9 @@ friendly_labels <- c(
 
 # Plot
 ggplot(coef_df, aes(x = estimate, y = term)) +
-  geom_point(color = "#002454", size = 3) +
+  geom_point(color = "#FAC01A", size = 3) +
   geom_errorbarh(aes(xmin = estimate - std.error, xmax = estimate + std.error),
-                 height = 0.2, color = "#FAC01A") +
+                 height = 0.2, color = "#002454") +
   scale_y_discrete(labels = friendly_labels) +  # use friendly labels
   labs(
     title = "Figure 8",
@@ -637,8 +644,12 @@ ggplot(coef_df, aes(x = estimate, y = term)) +
   theme(
     axis.text.y = element_text(hjust = 0),
     plot.title = element_text(hjust = 0.5, face = "bold")
-  )
+  ) +
+  plot.caption
 
+
+ggsave('Model_Metrics.png', plot = last_plot(),
+       path="/Users/tharris/Desktop", dpi =1200)
 
 ```
 
@@ -652,10 +663,11 @@ Finance_sum <- sales_data %>%
 
 Finance_total <- ggplot(data = Finance_sum, aes(x = FINANCE_TYPE, y = Total_Sales)) +
   geom_bar(stat = "identity", fill = "#002454") +
-  labs( x = "Finance Type", y = "Total Sales") +
+  labs( title = "Figure 6", x = "Finance Type", y = "Total Sales") +
   theme_classic() +
   theme(
-    plot.margin = unit(c(1,1,1,1), "cm")
+    plot.margin = unit(c(1,1,1,1), "cm"),
+    plot.title = element_text(hjust = 0.5)
   )
 
 Finance_total
